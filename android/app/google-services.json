@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "608889797638",
+    "project_id": "cinnamon-garden-deea9",
+    "storage_bucket": "cinnamon-garden-deea9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:608889797638:android:d173b4b99886183085d787",
+        "android_client_info": {
+          "package_name": "com.tech.booking.booking_management_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "608889797638-vtk7qd4mvh1ie8qe4i2n6d4qb981q6q0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tech.booking.booking_management_app",
+            "certificate_hash": "542ac3bcd852e30045d45c96a424933f194295c7"
+          }
+        },
+        {
+          "client_id": "608889797638-qonqcjkphitg3uklvgvgbfvibihka23l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCe1EXl1YCNm-oql08t2RyxynRuyFyPLAo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "608889797638-qonqcjkphitg3uklvgvgbfvibihka23l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

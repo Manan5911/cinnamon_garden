@@ -1,26 +1,34 @@
-class AppUser {
+class UserModel {
   final String uid;
   final String email;
-  final String role; // 'admin', 'manager', 'kitchen'
-  final String? restaurant; // null for admin
+  final String role; // admin, manager, kitchen
+  final String? restaurantId;
+  final bool isActive;
 
-  AppUser({
+  UserModel({
     required this.uid,
     required this.email,
     required this.role,
-    this.restaurant,
+    this.restaurantId,
+    this.isActive = true,
   });
 
-  factory AppUser.fromMap(Map<String, dynamic> map, String uid) {
-    return AppUser(
+  factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
+    return UserModel(
       uid: uid,
-      email: map['email'] ?? '',
-      role: map['role'] ?? '',
-      restaurant: map['restaurant'],
+      email: data['email'],
+      role: data['role'],
+      restaurantId: data['restaurantId'],
+      isActive: data['isActive'] ?? true,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'email': email, 'role': role, 'restaurant': restaurant};
+    return {
+      'email': email,
+      'role': role,
+      'restaurantId': restaurantId,
+      'isActive': isActive,
+    };
   }
 }

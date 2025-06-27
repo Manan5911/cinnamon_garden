@@ -1,9 +1,12 @@
+// ignore_for_file: unused_field
+
+import 'package:booking_management_app/core/screens/common/role_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
-import '../../../core/controllers/auth_controller.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/snackbar_helper.dart';
+import '../../controllers/auth_controller.dart';
+import '../../theme/app_colors.dart';
+import '../../utils/snackbar_helper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -47,13 +50,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         message: 'Login successful!',
         type: MessageType.success,
       );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const RoleRouter()),
+      );
     } catch (e) {
       final cleaned = e.toString().replaceFirst('Exception: ', '');
       setState(() => _errorMessage = cleaned);
 
       SnackbarHelper.show(
         context,
-        message: 'Invalid credentials!',
+        message: _errorMessage ?? 'Something went wrong!',
         type: MessageType.error,
       );
     }

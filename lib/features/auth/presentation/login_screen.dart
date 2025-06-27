@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
 import '../../../core/controllers/auth_controller.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/snackbar_helper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -40,18 +42,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login successful!'),
-          backgroundColor: Colors.green,
-        ),
+      SnackbarHelper.show(
+        context,
+        message: 'Login successful!',
+        type: MessageType.success,
       );
     } catch (e) {
       final cleaned = e.toString().replaceFirst('Exception: ', '');
       setState(() => _errorMessage = cleaned);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(cleaned), backgroundColor: Colors.redAccent),
+      SnackbarHelper.show(
+        context,
+        message: 'Invalid credentials!',
+        type: MessageType.error,
       );
     }
   }
@@ -68,7 +71,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = ref.watch(authControllerProvider).isLoading;
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-
     final isFormFilled =
         _emailController.text.isNotEmpty && _passwordController.text.isNotEmpty;
 
@@ -84,9 +86,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFF0E0E2C),
-                    Color(0xFF1A1A3A),
-                    Color(0xFF2D1B69),
+                    AppColors.secondary,
+                    AppColors.background,
+                    AppColors.backgroundBottom,
                   ],
                 ),
               ),
@@ -104,16 +106,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         horizontal: screenWidth * 0.08,
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           const SizedBox(height: 32),
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.03),
+                              color: AppColors.glass,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: AppColors.border,
                                 width: 1,
                               ),
                             ),
@@ -128,44 +129,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.03),
+                              color: AppColors.glass,
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: AppColors.border,
                                 width: 1,
                               ),
-                              boxShadow: [
+                              boxShadow: const [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black26,
                                   blurRadius: 20,
-                                  offset: const Offset(0, 10),
+                                  offset: Offset(0, 10),
                                 ),
                               ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                const Text(
+                                Text(
                                   'Welcome Back 👋',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                    fontFamily: 'Roboto',
-                                  ),
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   'Login to manage your bookings',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontWeight: FontWeight.w400,
-                                    fontFamily: 'Roboto',
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                 ),
                                 const SizedBox(height: 32),
-
                                 _buildTextField(
                                   controller: _emailController,
                                   label: 'Email',
@@ -173,7 +167,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   keyboardType: TextInputType.emailAddress,
                                 ),
                                 const SizedBox(height: 20),
-
                                 _buildTextField(
                                   controller: _passwordController,
                                   label: 'Password',
@@ -181,8 +174,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   obscureText: true,
                                 ),
                                 const SizedBox(height: 10),
-
-                                // Forgot Password
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
@@ -207,14 +198,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     child: const Text(
                                       'Forgot Password?',
                                       style: TextStyle(
-                                        color: Color(0xFF6C5CE7),
+                                        color: AppColors.primary,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-
                                 SizedBox(
                                   width: double.infinity,
                                   height: 56,
@@ -223,15 +213,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         ? null
                                         : _login,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF6C5CE7),
+                                      backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
                                       elevation: 3,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(16),
                                       ),
-                                      shadowColor: const Color(
-                                        0xFF6C5CE7,
-                                      ).withOpacity(0.3),
+                                      shadowColor: AppColors.primary
+                                          .withOpacity(0.3),
                                     ),
                                     child: const Text(
                                       'Login',
@@ -239,7 +228,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.5,
-                                        fontFamily: 'Roboto',
                                       ),
                                     ),
                                   ),
@@ -257,19 +245,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
 
-          // Lottie Loader
+          /// Centered loader with white circular background
           if (isLoading)
             Container(
-              color: const Color.fromRGBO(
-                0,
-                0,
-                0,
-                0.3,
-              ), // dark transparent overlay
+              color: Colors.black.withOpacity(0.3),
               alignment: Alignment.center,
               child: Container(
-                width: 180, // size of white circular box
-                height: 180,
+                width: 160,
+                height: 160,
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
@@ -282,12 +265,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12.0), // optional padding
+                  padding: const EdgeInsets.all(8.0),
                   child: Lottie.asset(
                     'assets/animations/loader.json',
-                    fit: BoxFit.contain,
-                    width: 120, // size of animation inside
+                    width: 120,
                     height: 120,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
@@ -306,35 +289,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: AppColors.glass,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         style: const TextStyle(
-          color: Colors.white,
+          color: AppColors.text,
           fontSize: 16,
           fontWeight: FontWeight.w400,
-          fontFamily: 'Roboto',
         ),
         decoration: InputDecoration(
           prefixIcon: Padding(
             padding: const EdgeInsets.only(left: 12, right: 8),
-            child: Icon(icon, color: Color(0xFF6C5CE7), size: 20),
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 0,
-            minHeight: 0,
+            child: Icon(icon, color: AppColors.primary, size: 20),
           ),
           hintText: label,
-          hintStyle: TextStyle(
-            color: Colors.white.withOpacity(0.4),
+          hintStyle: const TextStyle(
+            color: AppColors.hint,
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            fontFamily: 'Roboto',
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -346,7 +323,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 12,

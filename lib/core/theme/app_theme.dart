@@ -4,19 +4,19 @@ import 'app_colors.dart';
 ThemeData appTheme = ThemeData(
   useMaterial3: true,
   fontFamily: 'Poppins',
-  scaffoldBackgroundColor: AppColors.secondary,
-  colorScheme: const ColorScheme.dark(
+  scaffoldBackgroundColor: AppColors.background,
+  colorScheme: const ColorScheme.light(
     primary: AppColors.primary,
-    secondary: AppColors.background,
+    secondary: AppColors.secondary,
     surface: AppColors.backgroundBottom,
-    background: AppColors.secondary,
+    background: AppColors.background,
     onPrimary: AppColors.text,
     onSurface: AppColors.text,
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
     fillColor: AppColors.glass,
-    labelStyle: TextStyle(color: AppColors.hint),
+    labelStyle: const TextStyle(color: AppColors.hint),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
       borderSide: BorderSide.none,
@@ -33,19 +33,19 @@ ThemeData appTheme = ThemeData(
   ),
   textTheme: const TextTheme(
     headlineSmall: TextStyle(
-      fontSize: 24,
+      fontSize: 26,
       fontWeight: FontWeight.w600,
       color: AppColors.text,
     ),
     bodyMedium: TextStyle(
       fontSize: 16,
-      color: AppColors.text,
       fontWeight: FontWeight.w400,
+      color: AppColors.text,
     ),
     bodySmall: TextStyle(
       fontSize: 14,
-      color: AppColors.hint,
       fontWeight: FontWeight.w400,
+      color: AppColors.textSecondary,
     ),
   ),
 );

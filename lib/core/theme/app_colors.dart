@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF6C5CE7); // Button color
-  static const Color secondary = Color(0xFF0E0E2C); // Top gradient
-  static const Color background = Color(0xFF1A1A3A); // Middle gradient
-  static const Color backgroundBottom = Color(0xFF2D1B69); // Bottom gradient
+  static const Color primary = Color(
+    0xFF4B5F44,
+  ); // Deep green (buttons & accents)
+  static const Color secondary = Color(0xFF7C9D85); // Sage green (top gradient)
+  static const Color background = Color(0xFFFDD5C2); // Soft pastel peach
+  static const Color backgroundBottom = Color(
+    0xFFFBC1B4,
+  ); // Slightly darker peach
 
-  static const Color text = Colors.white;
-  static const Color textSecondary = Color(0x99FFFFFF); // white 60%
-  static const Color hint = Color(0x66FFFFFF); // white 40%
+  static const Color text = Color(0xFF2E3D2F); // Dark forest green
+  static const Color textSecondary = Color(0x992E3D2F); // 60% opacity
+  static const Color hint = Color(0x662E3D2F); // 40% opacity
 
-  static const Color border = Color(0x1AFFFFFF); // white 10%
-  static const Color glass = Color(0x08FFFFFF); // white 3%
+  static const Color border = Color(0x1A2E3D2F); // 10% opacity for borders
+  static const Color glass = Color(
+    0x08FFFFFF,
+  ); // subtle white overlay for glass UI
 }

@@ -137,35 +137,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: double.infinity,
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
-                              color: AppColors.glass,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: AppColors.border,
-                                width: 1,
+                                color: AppColors.primary.withOpacity(0.15),
+                                width: 1.2,
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Colors.black26,
+                                  color: Colors.black12,
                                   blurRadius: 20,
                                   offset: Offset(0, 10),
                                 ),
                               ],
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Welcome Back 👋',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
+                                Center(
+                                  child: Text(
+                                    'Welcome Back 👋',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall!
+                                        .copyWith(color: AppColors.primary),
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
-                                  'Login to manage your bookings',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: AppColors.textSecondary,
-                                      ),
+                                Center(
+                                  child: Text(
+                                    'Login to manage your bookings',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
+                                        .copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
                                 ),
                                 const SizedBox(height: 32),
                                 _buildTextField(
@@ -253,7 +261,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
 
-          /// Centered loader with white circular background
+          /// Centered loader
           if (isLoading)
             Container(
               color: Colors.black.withOpacity(0.3),
@@ -295,50 +303,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.glass,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 1),
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: const TextStyle(
+        color: AppColors.text,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
       ),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        style: const TextStyle(
-          color: AppColors.text,
-          fontSize: 16,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+        hintText: label,
+        hintStyle: const TextStyle(
+          color: AppColors.hint,
+          fontSize: 14,
           fontWeight: FontWeight.w400,
         ),
-        decoration: InputDecoration(
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 12, right: 8),
-            child: Icon(icon, color: AppColors.primary, size: 20),
-          ),
-          hintText: label,
-          hintStyle: const TextStyle(
-            color: AppColors.hint,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.primary, width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 16,
-          ),
-          filled: true,
-          fillColor: Colors.transparent,
+        filled: true,
+        fillColor: AppColors.background.withOpacity(0.1),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
       ),
     );

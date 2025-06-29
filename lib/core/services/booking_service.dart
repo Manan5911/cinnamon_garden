@@ -69,4 +69,15 @@ class BookingService {
   Future<void> closeBooking(String bookingId) async {
     await _bookingCollection.doc(bookingId).update({'isClosed': true});
   }
+
+  /// 🔹 Fetch all bookings (default sorted by date ascending)
+  Future<List<BookingModel>> fetchBookings() async {
+    final query = await _bookingCollection
+        .orderBy('date', descending: false)
+        .get();
+
+    return query.docs
+        .map((doc) => BookingModel.fromMap(doc.data(), doc.id))
+        .toList();
+  }
 }

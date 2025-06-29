@@ -1,6 +1,8 @@
 // ignore_for_file: unused_field
 
+import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/models/user_model.dart';
+import 'package:booking_management_app/core/services/booking_service.dart';
 import 'package:booking_management_app/core/services/user_service.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ class AdminUserController extends StateNotifier<bool> {
   AdminUserController(this._ref) : super(false);
 
   final _userService = UserService();
+  final _bookingService = BookingService();
 
   /// 🔹 Create user with email/password + Firestore entry
   Future<void> createNewUser({
@@ -127,6 +130,28 @@ class AdminUserController extends StateNotifier<bool> {
       );
     } finally {
       state = false;
+    }
+  }
+
+  Future<List<BookingModel>> getBookingsBetweenDates(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
+    try {
+      final allBookings = await BookingService().fetchBookings();
+
+      final filtered = allBookings.where((booking) {
+        final bookingDate = booking.date;
+
+        return bookingDate.isAfter(
+              startDate.subtract(const Duration(days: 1)),
+            ) &&
+            bookingDate.isBefore(endDate.add(const Duration(days: 1)));
+      }).toList();
+
+      return filtered;
+    } catch (e) {
+      rethrow;
     }
   }
 

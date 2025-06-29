@@ -58,7 +58,7 @@ class UserService {
   Future<List<UserModel>> getAllUsers() async {
     final query = await _userCollection.get();
     return query.docs
-        .map((doc) => UserModel.fromMap(doc.data()!, doc.id))
+        .map((doc) => UserModel.fromMap(doc.data(), doc.id))
         .toList();
   }
 
@@ -66,7 +66,7 @@ class UserService {
   Future<List<UserModel>> getUsersByRole(String role) async {
     final query = await _userCollection.where('role', isEqualTo: role).get();
     return query.docs
-        .map((doc) => UserModel.fromMap(doc.data()!, doc.id))
+        .map((doc) => UserModel.fromMap(doc.data(), doc.id))
         .toList();
   }
 

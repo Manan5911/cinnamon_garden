@@ -26,12 +26,12 @@ class BookingFilterController
       final now = DateTime.now();
       final allBookings = await BookingService().fetchBookings();
       final upcoming = allBookings.where((b) => b.date.isAfter(now)).toList();
-      print('[DEBUG] Fetched ${upcoming.length} upcoming bookings');
+      print('[DEBUG] Fetched \${upcoming.length} upcoming bookings');
       state = AsyncValue.data(upcoming);
       selectedRange = null;
       isFiltering = false;
     } catch (e, st) {
-      print('[ERROR] Failed to fetch upcoming bookings: $e');
+      print('[ERROR] Failed to fetch upcoming bookings: \$e');
       state = AsyncValue.error(e, st);
     }
   }
@@ -44,7 +44,7 @@ class BookingFilterController
         return b.date.isAfter(range.start.subtract(const Duration(days: 1))) &&
             b.date.isBefore(range.end.add(const Duration(days: 1)));
       }).toList();
-      print('[DEBUG] Fetched ${filtered.length} filtered bookings');
+      print('[DEBUG] Fetched \${filtered.length} filtered bookings');
       state = AsyncValue.data(filtered);
       selectedRange = range;
       isFiltering = true;
@@ -56,9 +56,9 @@ class BookingFilterController
   void resetFilter() => loadUpcomingBookings();
 
   String getHeading() {
-    if (!isFiltering || selectedRange == null) return "Upcoming Bookings";
+    if (!isFiltering || selectedRange == null) return "Total";
     final df = DateFormat('d MMM');
-    return "Bookings from ${df.format(selectedRange!.start)} – ${df.format(selectedRange!.end)}";
+    return "Total from \${df.format(selectedRange!.start)} – \${df.format(selectedRange!.end)}";
   }
 
   int get count => state.value?.length ?? 0;

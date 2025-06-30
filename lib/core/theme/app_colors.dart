@@ -18,4 +18,5 @@ class AppColors {
   static const Color glass = Color(
     0x08FFFFFF,
   ); // subtle white overlay for glass UI
+  static const Color pinkThemed = Color(0xFFFFE5EC);
 }

@@ -1,4 +1,6 @@
+import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
+import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,12 +96,15 @@ class BookingHome extends ConsumerStatefulWidget {
 
 class _BookingHomeState extends ConsumerState<BookingHome> {
   DateTimeRange? _selectedRange;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    final today = DateTime.now();
-    _selectedRange = DateTimeRange(start: today, end: today);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    _selectedRange = DateTimeRange(start: today, end: tomorrow);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(bookingFilterControllerProvider.notifier)
@@ -108,143 +113,201 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final controller = ref.watch(bookingFilterControllerProvider.notifier);
     final bookingsAsync = ref.watch(bookingFilterControllerProvider);
     final textTheme = Theme.of(context).textTheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hi, Admin',
-                      style: textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _selectedRange == null
-                          ? 'Overview of all bookings'
-                          : _selectedRange!.start == _selectedRange!.end
-                          ? 'Showing for ${DateFormat('d MMM yyyy').format(_selectedRange!.start)}'
-                          : 'From ${DateFormat('d MMM').format(_selectedRange!.start)} to ${DateFormat('d MMM yyyy').format(_selectedRange!.end)}',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  color: Colors.white,
-                  size: 36,
-                ),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        Expanded(
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: SingleChildScrollView(
-              // 👈 Entire panel scrollable
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _buildStatBox(
-                            title: 'Open',
-                            value:
-                                '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
+                        Text(
+                          'Hi, Admin',
+                          style: textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildStatBox(
-                            title: 'Closed',
-                            value:
-                                '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE5EC),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.calendar_month,
-                              color: Colors.black,
-                            ),
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (_) => _DateRangeModal(
-                                  initialRange: _selectedRange!,
-                                  onApply: (range) {
-                                    setState(() => _selectedRange = range);
-                                    controller.filterByDateRange(range);
-                                  },
-                                ),
-                              );
-                            },
+                        const SizedBox(height: 6),
+                        Text(
+                          _selectedRange == null
+                              ? 'Overview of all bookings'
+                              : _selectedRange!.start == _selectedRange!.end
+                              ? 'Showing for ${DateFormat('d MMM yyyy').format(_selectedRange!.start)}'
+                              : 'From ${DateFormat('d MMM').format(_selectedRange!.start)} to ${DateFormat('d MMM yyyy').format(_selectedRange!.end)}',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.white70,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  bookingsAsync.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Error: $e')),
-                    data: (bookings) => bookings.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(20),
-                            child: Center(child: Text('No bookings available')),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: bookings.length,
-                            itemBuilder: (_, i) => _buildBookingTile(
-                              name: bookings[i].guideName,
-                              date: DateFormat(
-                                'd MMM',
-                              ).format(bookings[i].date),
-                              type: bookings[i].type.name,
-                            ),
-                          ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                    onPressed: () async {
+                      final result = await Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (_, __, ___) => const AddBookingPage(),
+                          transitionsBuilder: (_, animation, __, child) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 1),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 500),
+                        ),
+                      );
+
+                      if (result == true) {
+                        if (_selectedRange != null) {
+                          ref
+                              .read(bookingFilterControllerProvider.notifier)
+                              .filterByDateRange(_selectedRange!);
+                        } else {
+                          ref
+                              .read(bookingFilterControllerProvider.notifier)
+                              .loadUpcomingBookings();
+                        }
+                      }
+                    },
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildStatBox(
+                                title: 'Open',
+                                value:
+                                    '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildStatBox(
+                                title: 'Closed',
+                                value:
+                                    '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFE5EC),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.calendar_month,
+                                  color: Colors.black,
+                                ),
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (_) => _DateRangeModal(
+                                      initialRange: _selectedRange!,
+                                      onApply: (range) {
+                                        setState(() => _selectedRange = range);
+                                        controller.filterByDateRange(range);
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      bookingsAsync.when(
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => Center(child: Text('Error: $e')),
+                        data: (bookings) => bookings.isEmpty
+                            ? const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Center(
+                                  child: Text('No bookings available'),
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      20,
+                                      0,
+                                      20,
+                                      12,
+                                    ),
+                                    child: Text(
+                                      'Bookings (${bookings.length})',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    itemCount: bookings.length,
+                                    itemBuilder: (_, i) => _buildBookingTile(
+                                      name: bookings[i].guideName,
+                                      date: DateFormat(
+                                        'd MMM',
+                                      ).format(bookings[i].date),
+                                      type: bookings[i].type.name,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
+        if (_isLoading) const Center(child: CustomLoader()),
       ],
     );
   }
@@ -410,17 +473,32 @@ class _DateRangeModalState extends State<_DateRangeModal> {
                       });
                     },
                     calendarStyle: CalendarStyle(
-                      todayDecoration: const BoxDecoration(
-                        color: Colors.pink,
+                      todayDecoration: BoxDecoration(
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primary, // ✅ Blue outline for today
+                          width: 2,
+                        ),
+                      ),
+                      todayTextStyle: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      rangeStartTextStyle: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      rangeEndTextStyle: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                       rangeHighlightColor: Colors.pink.shade100,
                       rangeStartDecoration: BoxDecoration(
-                        color: Colors.pink.shade400,
+                        color: const Color(0xFFFFE5EC),
                         shape: BoxShape.circle,
                       ),
                       rangeEndDecoration: BoxDecoration(
-                        color: Colors.pink.shade400,
+                        color: const Color(0xFFFFE5EC),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -450,9 +528,9 @@ class _DateRangeModalState extends State<_DateRangeModal> {
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: (_rangeStart != null && _rangeEnd != null)
-                        ? Colors.pink.shade400
+                        ? const Color(0xFFFFE5EC)
                         : Colors.grey,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

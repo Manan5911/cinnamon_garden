@@ -1,5 +1,6 @@
 import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
+import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:flutter/material.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
@@ -16,11 +17,13 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
+  final PageController _pageController = PageController();
 
   final List<Widget> _screens = [
     const BookingHome(),
     const Center(child: Text('Kitchen')),
     const Center(child: Text('Managers')),
+    const RestaurantScreen(),
     const Center(child: Text('More')),
   ];
 
@@ -29,9 +32,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Scaffold(
       backgroundColor: AppColors.secondary,
       body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _screens[_currentIndex],
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index; // update selected tab when swiped
+            });
+          },
+          children: _screens,
         ),
       ),
       bottomNavigationBar: Container(
@@ -53,12 +61,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
           showUnselectedLabels: true,
           type: BottomNavigationBarType.fixed,
           elevation: 0,
-          onTap: (index) => setState(() => _currentIndex = index),
+          onTap: (index) {
+            _pageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+            setState(() => _currentIndex = index); // update tab UI
+          },
           items: [
             _customBarItem(Icons.event_note_outlined, 'Booking', 0),
             _customBarItem(Icons.restaurant_menu_outlined, 'Kitchen', 1),
             _customBarItem(Icons.people_outline, 'Managers', 2),
-            _customBarItem(Icons.settings_outlined, 'More', 3),
+            _customBarItem(Icons.storefront_outlined, 'Restaurant', 3),
+            _customBarItem(Icons.settings_outlined, 'More', 4),
           ],
         ),
       ),

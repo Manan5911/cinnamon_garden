@@ -78,6 +78,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           showUnselectedLabels: true,
           type: BottomNavigationBarType.fixed,
           elevation: 0,
+          selectedFontSize: 13, // ↓ Reduce font size
+          unselectedFontSize: 11,
           onTap: (index) {
             _pageController.animateToPage(
               index,

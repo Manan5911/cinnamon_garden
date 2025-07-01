@@ -26,14 +26,19 @@ class BookingFilterController
     state = const AsyncValue.loading();
     try {
       final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
       final allBookings = await BookingService().fetchBookings();
-      final upcoming = allBookings.where((b) => b.date.isAfter(now)).toList();
-      print('[DEBUG] Fetched \${upcoming.length} upcoming bookings');
+      final upcoming = allBookings.where((b) {
+        final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
+        return bookingDate.isAfter(today) ||
+            bookingDate.isAtSameMomentAs(today);
+      }).toList();
+      print('[DEBUG] Fetched ${upcoming.length} upcoming bookings');
       state = AsyncValue.data(upcoming);
       selectedRange = null;
       isFiltering = false;
     } catch (e, st) {
-      print('[ERROR] Failed to fetch upcoming bookings: \$e');
+      print('[ERROR] Failed to fetch upcoming bookings: $e');
       state = AsyncValue.error(e, st);
     }
   }
@@ -41,16 +46,34 @@ class BookingFilterController
   Future<void> filterByDateRange(DateTimeRange range) async {
     state = const AsyncValue.loading();
     try {
+      final start = DateTime(
+        range.start.year,
+        range.start.month,
+        range.start.day,
+      );
+      final end = DateTime(
+        range.end.year,
+        range.end.month,
+        range.end.day,
+        23,
+        59,
+        59,
+      );
+
       final allBookings = await BookingService().fetchBookings();
       final filtered = allBookings.where((b) {
-        return b.date.isAfter(range.start.subtract(const Duration(days: 1))) &&
-            b.date.isBefore(range.end.add(const Duration(days: 1)));
+        final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
+        return (bookingDate.isAtSameMomentAs(start) ||
+            bookingDate.isAtSameMomentAs(end) ||
+            (bookingDate.isAfter(start) && bookingDate.isBefore(end)));
       }).toList();
-      print('[DEBUG] Fetched \${filtered.length} filtered bookings');
+
+      print('[DEBUG] Filtered bookings count: ${filtered.length}');
       state = AsyncValue.data(filtered);
       selectedRange = range;
       isFiltering = true;
     } catch (e, st) {
+      print('[ERROR] Filtering failed: $e');
       state = AsyncValue.error(e, st);
     }
   }
@@ -60,7 +83,7 @@ class BookingFilterController
   String getHeading() {
     if (!isFiltering || selectedRange == null) return "Total";
     final df = DateFormat('d MMM');
-    return "Total from \${df.format(selectedRange!.start)} – \${df.format(selectedRange!.end)}";
+    return "Total from ${df.format(selectedRange!.start)} – ${df.format(selectedRange!.end)}";
   }
 
   int get count => state.value?.length ?? 0;

@@ -213,6 +213,8 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return Stack(
       children: [
         Scaffold(
@@ -224,12 +226,10 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'My Restaurants',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                          style: textTheme.headlineSmall?.copyWith(
                             color: Colors.white,
                           ),
                         ),

@@ -2,6 +2,7 @@ import 'package:booking_management_app/core/screens/admin/add_booking_page.dart'
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
 import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
+import 'package:booking_management_app/core/utils/snackbar_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,8 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  final bool showLoginSuccess;
+  const AdminDashboard({super.key, this.showLoginSuccess = false});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -18,6 +20,20 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.showLoginSuccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SnackbarHelper.show(
+          context,
+          message: 'Login successful!',
+          type: MessageType.success,
+        );
+      });
+    }
+  }
 
   final List<Widget> _screens = [
     const BookingHome(),
@@ -39,6 +55,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               _currentIndex = index; // update selected tab when swiped
             });
           },
+          physics: const BouncingScrollPhysics(),
           children: _screens,
         ),
       ),
@@ -64,7 +81,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           onTap: (index) {
             _pageController.animateToPage(
               index,
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
             );
             setState(() => _currentIndex = index); // update tab UI

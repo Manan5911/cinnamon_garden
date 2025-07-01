@@ -19,6 +19,7 @@ class AuthController extends StateNotifier<AuthState> {
     required BuildContext context,
     required String email,
     required String password,
+    required void Function(String role) onSuccess, // NEW
   }) async {
     try {
       state = AuthState(isLoading: true);
@@ -27,18 +28,14 @@ class AuthController extends StateNotifier<AuthState> {
           .signInWithEmailAndPassword(email: email, password: password);
 
       final uid = userCredential.user?.uid;
-      if (uid == null) {
-        throw 'Unexpected login error. Please try again.';
-      }
+      if (uid == null) throw 'Unexpected login error. Please try again.';
 
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .get();
 
-      if (!userDoc.exists) {
-        throw 'User not registered in Firestore.';
-      }
+      if (!userDoc.exists) throw 'User not registered in Firestore.';
 
       final data = userDoc.data()!;
       final role = data['role'];
@@ -47,7 +44,7 @@ class AuthController extends StateNotifier<AuthState> {
         throw 'Unknown role: $role';
       }
 
-      return;
+      onSuccess(role); // call navigator
     } on FirebaseAuthException catch (e) {
       final message = e.message?.toLowerCase() ?? '';
       final code = e.code;

@@ -1,6 +1,11 @@
 // ignore_for_file: unused_field
 
+import 'package:booking_management_app/core/screens/admin/admin_dashboard.dart';
 import 'package:booking_management_app/core/screens/common/role_router.dart';
+import 'package:booking_management_app/core/screens/kitchen/kitchen_dashboard.dart';
+import 'package:booking_management_app/core/screens/manager/manager_dashboard.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lottie/lottie.dart';
@@ -41,20 +46,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             context: context,
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
+            onSuccess: (role) async {
+              if (!mounted) return;
+
+              // Redirect based on role
+              if (role == 'admin') {
+                await Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const AdminDashboard(showLoginSuccess: true),
+                  ),
+                );
+              } else if (role == 'manager') {
+                await Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const ManagerDashboard(showLoginSuccess: true),
+                  ),
+                );
+              } else if (role == 'kitchen') {
+                await Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const KitchenDashboard(showLoginSuccess: true),
+                  ),
+                );
+              } else {
+                SnackbarHelper.show(
+                  context,
+                  message: 'Unknown role.',
+                  type: MessageType.error,
+                );
+                return;
+              }
+            },
           );
-
-      if (!mounted) return;
-
-      SnackbarHelper.show(
-        context,
-        message: 'Login successful!',
-        type: MessageType.success,
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const RoleRouter()),
-      );
     } catch (e) {
       final cleaned = e.toString().replaceFirst('Exception: ', '');
       setState(() => _errorMessage = cleaned);
@@ -123,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: AppColors.border,
-                                width: 1,
+                                width: 2,
                               ),
                             ),
                             child: Image.asset(
@@ -132,6 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               width: 160,
                             ),
                           ),
+
                           const SizedBox(height: 50),
                           Container(
                             width: double.infinity,
@@ -197,6 +227,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       showDialog(
                                         context: context,
                                         builder: (ctx) => AlertDialog(
+                                          backgroundColor: Colors.white,
                                           title: const Text('Forgot Password?'),
                                           content: const Text(
                                             'Please contact Admin to reset your password.',
@@ -321,7 +352,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           fontWeight: FontWeight.w400,
         ),
         filled: true,
-        fillColor: AppColors.background.withOpacity(0.1),
+        fillColor: AppColors.background.withOpacity(0.25),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 18,

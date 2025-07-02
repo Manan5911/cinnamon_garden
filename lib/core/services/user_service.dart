@@ -11,33 +11,31 @@ class UserService {
     required String email,
     required String password,
     required String role, // 'manager' or 'kitchen'
-    String? restaurantId,
+    required String restaurantId, // ✅ Now required
   }) async {
-    // Step 1: Create user in Firebase Authentication
     final userCredential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     final uid = userCredential.user!.uid;
 
-    // Step 2: Create user record in Firestore
     final user = UserModel(
       uid: uid,
       email: email,
       role: role,
-      restaurantId: restaurantId,
+      restaurantId: restaurantId, // ✅ Required field
       isActive: true,
     );
 
     await _userCollection.doc(uid).set(user.toMap());
   }
 
-  /// 🔹 Create Firestore-only user (used if UID is already created elsewhere)
+  /// 🔹 Create Firestore-only user
   Future<void> createUser(UserModel user) async {
     await _userCollection.doc(user.uid).set(user.toMap());
   }
 
-  /// 🔹 Update an existing user
+  /// 🔹 Update existing user
   Future<void> updateUser(UserModel user) async {
     await _userCollection.doc(user.uid).update(user.toMap());
   }
@@ -62,7 +60,7 @@ class UserService {
         .toList();
   }
 
-  /// 🔹 Get users by role
+  /// 🔹 Get users by role (manager / kitchen)
   Future<List<UserModel>> getUsersByRole(String role) async {
     final query = await _userCollection.where('role', isEqualTo: role).get();
     return query.docs
@@ -70,12 +68,12 @@ class UserService {
         .toList();
   }
 
-  /// 🔹 Revoke access (soft delete)
+  /// 🔹 Revoke access (soft disable)
   Future<void> revokeUserAccess(String uid) async {
     await _userCollection.doc(uid).update({'isActive': false});
   }
 
-  /// 🔹 Grant/re-activate access
+  /// 🔹 Grant access (reactivate)
   Future<void> grantUserAccess(String uid) async {
     await _userCollection.doc(uid).update({'isActive': true});
   }

@@ -84,6 +84,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
             },
           );
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdTokenResult();
+      print("ROLE: ${token?.claims?['role']}");
+      print("RESTAURANT ID: ${token?.claims?['restaurantId']}");
     } catch (e) {
       final cleaned = e.toString().replaceFirst('Exception: ', '');
       setState(() => _errorMessage = cleaned);

@@ -1,49 +1,61 @@
+// Updated KitchenStaffScreen
+import 'package:booking_management_app/core/models/restaurant_model.dart';
+import 'package:booking_management_app/core/models/user_model.dart';
+import 'package:booking_management_app/core/services/restaurant_service.dart';
+import 'package:booking_management_app/core/services/user_service.dart';
+import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
-import 'package:booking_management_app/core/theme/app_colors.dart';
-import 'package:booking_management_app/core/models/restaurant_model.dart';
-import 'package:booking_management_app/core/services/restaurant_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
-class RestaurantScreen extends StatefulWidget {
-  const RestaurantScreen({super.key});
+class KitchenStaffScreen extends StatefulWidget {
+  const KitchenStaffScreen({super.key});
 
   @override
-  State<RestaurantScreen> createState() => _RestaurantScreenState();
+  State<KitchenStaffScreen> createState() => _KitchenStaffScreenState();
 }
 
-class _RestaurantScreenState extends State<RestaurantScreen> {
-  final RestaurantService _restaurantService = RestaurantService();
-  List<Restaurant> _restaurants = [];
+class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
+  Map<String, String> _restaurantNameById = {};
+  final UserService _userService = UserService();
+  List<UserModel> _kitchenStaff = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _isLoading = true;
-    _loadRestaurants();
+    _loadKitchenStaff();
+    _loadRestaurantNames();
   }
 
-  Future<void> _loadRestaurants() async {
-    final data = await _restaurantService.getAllRestaurants();
+  Future<void> _loadKitchenStaff() async {
+    final data = await _userService.getUsersByRole("kitchen");
     if (mounted) {
       setState(() {
-        _restaurants = data;
+        _kitchenStaff = data;
         _isLoading = false;
       });
     }
   }
 
-  void _showRestaurantModal({Restaurant? existing}) {
-    final nameController = TextEditingController(text: existing?.name ?? '');
-    final addressController = TextEditingController(
-      text: existing?.address ?? '',
-    );
+  Future<void> _loadRestaurantNames() async {
+    final restaurants = await RestaurantService().getAllRestaurants();
+    setState(() {
+      _restaurantNameById = {for (var r in restaurants) r.id: r.name};
+    });
+  }
+
+  void _showStaffModal({UserModel? existing}) {
+    final emailController = TextEditingController(text: existing?.email ?? '');
+    final passwordController = TextEditingController();
+    Restaurant? selectedRestaurant;
+
     final parentContext = context;
 
     showModalBottomSheet(
-      context: parentContext,
+      context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -61,20 +73,19 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
             builder: (context, setModalState) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    existing == null ? 'Add Restaurant' : 'Edit Restaurant',
+                    existing == null ? 'Add Kitchen Staff' : 'Edit Staff',
                     style: const TextStyle(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    controller: nameController,
+                    controller: emailController,
                     decoration: InputDecoration(
-                      labelText: 'Restaurant Name',
+                      labelText: 'Email',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -89,20 +100,105 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Address',
-                      border: OutlineInputBorder(
+                  if (existing == null)
+                    TextField(
+                      controller: passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade500),
+                        ),
+                      ),
+                      obscureText: true,
+                    ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () async {
+                      final restaurants = await RestaurantService()
+                          .getAllRestaurants();
+                      if (!mounted) return;
+
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.white,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
+                        ),
+                        builder: (context) {
+                          return ListView.separated(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            itemCount: restaurants.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (_, index) {
+                              final r = restaurants[index];
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                dense: true,
+                                visualDensity: const VisualDensity(
+                                  vertical: -2,
+                                ),
+                                title: Text(
+                                  r.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  r.address,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                onTap: () {
+                                  setModalState(() {
+                                    selectedRestaurant = r;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade500),
+                      child: Text(
+                        selectedRestaurant?.name ?? 'Select Restaurant',
+                        style: TextStyle(
+                          color: selectedRestaurant == null
+                              ? Colors.grey
+                              : Colors.black,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -111,50 +207,62 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () async {
-                        final name = nameController.text.trim();
-                        final address = addressController.text.trim();
-                        if (name.isEmpty || address.isEmpty) return;
+                        final email = emailController.text.trim();
+                        final password = passwordController.text.trim();
+                        final restaurantId =
+                            selectedRestaurant?.id ??
+                            existing?.restaurantId ??
+                            '';
 
-                        Navigator.of(modalContext).pop(); // Close modal
+                        if (email.isEmpty ||
+                            restaurantId.isEmpty ||
+                            (existing == null && password.isEmpty))
+                          return;
 
+                        Navigator.pop(modalContext);
                         await Future.delayed(const Duration(milliseconds: 100));
-                        if (!mounted) return;
 
                         setState(() => _isLoading = true);
 
-                        final restaurant = Restaurant(
-                          id: existing?.id ?? const Uuid().v4(),
-                          name: name,
-                          address: address,
-                        );
-
                         try {
                           if (existing == null) {
-                            await _restaurantService.createRestaurant(
-                              restaurant,
+                            await _userService.createUserWithCredentials(
+                              email: email,
+                              password: password,
+                              role: 'kitchen',
+                              restaurantId: restaurantId,
                             );
                           } else {
-                            await _restaurantService.updateRestaurant(
-                              restaurant,
+                            final updatedUser = UserModel(
+                              uid: existing.uid,
+                              email: email,
+                              role: existing.role,
+                              restaurantId: restaurantId,
+                              isActive: existing.isActive,
                             );
+                            await _userService.updateUser(updatedUser);
                           }
 
-                          if (!mounted) return;
-                          await _loadRestaurants();
+                          await _loadKitchenStaff();
 
-                          if (!mounted) return;
                           SnackbarHelper.show(
-                            parentContext, // use this instead of `context`
+                            parentContext,
                             message: existing == null
-                                ? 'Restaurant added successfully'
-                                : 'Restaurant updated successfully',
+                                ? 'Kitchen staff added successfully'
+                                : 'Kitchen staff updated successfully',
                             type: MessageType.success,
                           );
-                        } catch (_) {
-                          // Show error if you want
-                        } finally {
-                          if (mounted) setState(() => _isLoading = false);
-                        }
+                        } on FirebaseAuthException catch (e) {
+                          if (e.code == 'email-already-in-use') {
+                            // Show friendly error or prompt admin to use a different email
+                            SnackbarHelper.show(
+                              parentContext,
+                              message: "Email is already in use",
+                              type: MessageType.error,
+                            );
+                          }
+                        } catch (_) {}
+                        if (mounted) setState(() => _isLoading = false);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.pinkThemed,
@@ -178,16 +286,13 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     );
   }
 
-  void _confirmDelete(Restaurant restaurant) {
+  void _confirmDelete(UserModel user) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text(
-          'Confirm Delete',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Text('Are you sure you want to delete "${restaurant.name}"?'),
+        title: const Text('Delete Staff?'),
+        content: Text('Are you sure you want to delete ${user.email}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -195,29 +300,16 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(dialogContext); // Close dialog
-
-              await Future.delayed(const Duration(milliseconds: 100));
-              if (!mounted) return;
-
+              Navigator.pop(dialogContext);
               setState(() => _isLoading = true);
-
-              try {
-                await _restaurantService.deleteRestaurant(restaurant.id);
-                if (!mounted) return;
-
-                await _loadRestaurants();
-
-                if (!mounted) return;
+              await _userService.deleteUser(user.uid);
+              await _loadKitchenStaff();
+              if (mounted) {
                 SnackbarHelper.show(
                   context,
-                  message: 'Restaurant deleted',
+                  message: 'Deleted',
                   type: MessageType.success,
                 );
-              } catch (_) {
-                // Show error if needed
-              } finally {
-                if (mounted) setState(() => _isLoading = false);
               }
             },
             child: const Text('Confirm', style: TextStyle(color: Colors.red)),
@@ -244,7 +336,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'My Restaurants',
+                          'Kitchen Staff',
                           style: textTheme.headlineSmall?.copyWith(
                             color: Colors.white,
                           ),
@@ -256,7 +348,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                           size: 36,
                           color: Colors.white,
                         ),
-                        onPressed: () => _showRestaurantModal(),
+                        onPressed: () => _showStaffModal(),
                       ),
                     ],
                   ),
@@ -273,14 +365,14 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                       padding: const EdgeInsets.all(20),
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : _restaurants.isEmpty
-                          ? const Center(child: Text('No restaurants added'))
+                          : _kitchenStaff.isEmpty
+                          ? const Center(child: Text('No kitchen staff found'))
                           : ListView.separated(
-                              itemCount: _restaurants.length,
+                              itemCount: _kitchenStaff.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 12),
                               itemBuilder: (_, index) {
-                                final r = _restaurants[index];
+                                final staff = _kitchenStaff[index];
                                 return Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
@@ -304,7 +396,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            r.name,
+                                            staff.email,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 15,
@@ -313,7 +405,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            r.address,
+                                            'Restaurant: ${_restaurantNameById[staff.restaurantId] ?? "-"}',
                                             style: const TextStyle(
                                               fontSize: 13,
                                               color: AppColors.textSecondary,
@@ -332,10 +424,9 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                                                 size: 18,
                                                 color: AppColors.primary,
                                               ),
-                                              onPressed: () =>
-                                                  _showRestaurantModal(
-                                                    existing: r,
-                                                  ),
+                                              onPressed: () => _showStaffModal(
+                                                existing: staff,
+                                              ),
                                               tooltip: 'Edit',
                                             ),
                                           ),
@@ -350,7 +441,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                                                 color: AppColors.primary,
                                               ),
                                               onPressed: () =>
-                                                  _confirmDelete(r),
+                                                  _confirmDelete(staff),
                                               tooltip: 'Delete',
                                             ),
                                           ),
@@ -368,7 +459,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
             ),
           ),
         ),
-        if (_isLoading && _restaurants.isNotEmpty)
+        if (_isLoading && _kitchenStaff.isNotEmpty)
           const IgnorePointer(child: CustomLoader()),
       ],
     );

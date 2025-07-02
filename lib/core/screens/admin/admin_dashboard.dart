@@ -1,5 +1,6 @@
 import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
+import 'package:booking_management_app/core/screens/admin/kitchen_staff_screen.dart';
 import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
@@ -37,7 +38,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   final List<Widget> _screens = [
     const BookingHome(),
-    const Center(child: Text('Kitchen')),
+    const KitchenStaffScreen(),
     const Center(child: Text('Managers')),
     const RestaurantScreen(),
     const Center(child: Text('More')),

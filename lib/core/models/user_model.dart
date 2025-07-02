@@ -2,14 +2,14 @@ class UserModel {
   final String uid;
   final String email;
   final String role; // admin, manager, kitchen
-  final String? restaurantId;
+  final String restaurantId; // ✅ Now required
   final bool isActive;
 
   UserModel({
     required this.uid,
     required this.email,
     required this.role,
-    this.restaurantId,
+    required this.restaurantId, // ✅ Now required
     this.isActive = true,
   });
 
@@ -18,7 +18,7 @@ class UserModel {
       uid: uid,
       email: data['email'],
       role: data['role'],
-      restaurantId: data['restaurantId'],
+      restaurantId: data['restaurantId'], // ✅ Not nullable anymore
       isActive: data['isActive'] ?? true,
     );
   }

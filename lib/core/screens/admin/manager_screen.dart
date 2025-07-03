@@ -1,4 +1,3 @@
-// Updated KitchenStaffScreen
 import 'package:booking_management_app/core/models/restaurant_model.dart';
 import 'package:booking_management_app/core/models/user_model.dart';
 import 'package:booking_management_app/core/services/restaurant_service.dart';
@@ -9,34 +8,35 @@ import 'package:booking_management_app/core/utils/snackbar_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class KitchenStaffScreen extends StatefulWidget {
-  const KitchenStaffScreen({super.key});
+class ManagerScreen extends StatefulWidget {
+  const ManagerScreen({super.key});
 
   @override
-  State<KitchenStaffScreen> createState() => _KitchenStaffScreenState();
+  State<ManagerScreen> createState() => _ManagerScreenState();
 }
 
-class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
+class _ManagerScreenState extends State<ManagerScreen> {
   Map<String, String> _restaurantNameById = {};
   final UserService _userService = UserService();
-  List<UserModel> _kitchenStaff = [];
+  List<UserModel> _managers = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _isLoading = true;
-    _loadKitchenStaff();
+    _loadManagers();
     _loadRestaurantNames();
   }
 
-  Future<void> _loadKitchenStaff() async {
-    final data = await _userService.getUsersByRole("kitchen");
-    if (!mounted) return;
-    setState(() {
-      _kitchenStaff = data;
-      _isLoading = false;
-    });
+  Future<void> _loadManagers() async {
+    final data = await _userService.getUsersByRole("manager");
+    if (mounted) {
+      setState(() {
+        _managers = data;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadRestaurantNames() async {
@@ -47,7 +47,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
     });
   }
 
-  void _showStaffModal({UserModel? existing}) {
+  void _showManagerModal({UserModel? existing}) {
     final emailController = TextEditingController(text: existing?.email ?? '');
     final passwordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -59,15 +59,20 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
 
     bool showPassword = false;
     bool showConfirmPassword = false;
-    Restaurant? selectedRestaurant =
-        existing != null &&
-            _restaurantNameById.containsKey(existing.restaurantId)
-        ? Restaurant(
-            id: existing.restaurantId,
-            name: _restaurantNameById[existing.restaurantId]!,
-            address: '',
-          )
-        : null;
+
+    Restaurant? selectedRestaurant;
+
+    // Pre-fill the restaurant on edit
+    if (existing != null && selectedRestaurant == null) {
+      final restId = existing.restaurantId;
+      if (restId.isNotEmpty) {
+        selectedRestaurant = Restaurant(
+          id: restId,
+          name: _restaurantNameById[restId] ?? 'Unknown',
+          address: '',
+        );
+      }
+    }
 
     final parentContext = context;
 
@@ -93,7 +98,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      existing == null ? 'Add Kitchen Staff' : 'Edit Staff',
+                      existing == null ? 'Add Manager' : 'Edit Manager',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -119,6 +124,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+
                     if (existing == null) ...[
                       TextField(
                         controller: passwordController,
@@ -181,11 +187,13 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
+
                     GestureDetector(
                       onTap: () async {
                         final restaurants = await RestaurantService()
                             .getAllRestaurants();
                         if (!mounted) return;
+
                         showModalBottomSheet(
                           context: context,
                           backgroundColor: Colors.white,
@@ -264,16 +272,17 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                     ),
                     if (restaurantError != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.only(top: 6, left: 6),
                         child: Text(
                           restaurantError!,
                           style: const TextStyle(
+                            fontSize: 12,
                             color: Colors.red,
-                            fontSize: 13,
                           ),
                         ),
                       ),
                     const SizedBox(height: 20),
+
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -288,69 +297,50 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                               '';
 
                           setModalState(() {
-                            emailError = null;
-                            passwordError = null;
-                            confirmPasswordError = null;
-                            restaurantError = null;
+                            emailError = passwordError = confirmPasswordError =
+                                restaurantError = null;
+
+                            final emailRegex = RegExp(
+                              r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$",
+                            );
+
+                            if (email.isEmpty) {
+                              setModalState(
+                                () => emailError = "Email is required",
+                              );
+                            } else if (!emailRegex.hasMatch(email)) {
+                              setModalState(
+                                () => emailError = "Invalid email format",
+                              );
+                            }
+
+                            if (existing == null && password.isEmpty) {
+                              passwordError = "Password required";
+                            }
+                            if (existing == null && confirmPassword.isEmpty) {
+                              confirmPasswordError = "Confirm your password";
+                            }
+                            if (existing == null &&
+                                password != confirmPassword) {
+                              confirmPasswordError = "Passwords do not match";
+                            }
+                            if (selectedRestaurant == null) {
+                              restaurantError = "Select a restaurant";
+                            }
                           });
 
-                          final emailRegex = RegExp(
-                            r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$",
-                          );
-
-                          bool hasError = false;
-
-                          if (email.isEmpty) {
-                            setModalState(
-                              () => emailError = "Email is required",
-                            );
-                            hasError = true;
-                          } else if (!emailRegex.hasMatch(email)) {
-                            setModalState(
-                              () => emailError = "Invalid email format",
-                            );
-                            hasError = true;
-                          }
-
-                          if (restaurantId.isEmpty) {
-                            setModalState(
-                              () => restaurantError =
-                                  "Please select a restaurant",
-                            );
-                            hasError = true;
-                          }
-
-                          if (existing == null) {
-                            if (password.isEmpty) {
-                              setModalState(
-                                () => passwordError = "Password is required",
-                              );
-                              hasError = true;
-                            }
-                            if (confirmPassword.isEmpty) {
-                              setModalState(
-                                () => confirmPasswordError =
-                                    "Confirm Password is required",
-                              );
-                              hasError = true;
-                            }
-                            if (password != confirmPassword) {
-                              setModalState(
-                                () => confirmPasswordError =
-                                    "Passwords do not match",
-                              );
-                              hasError = true;
-                            }
-                          }
-
-                          if (hasError) return;
+                          if ([
+                            emailError,
+                            passwordError,
+                            confirmPasswordError,
+                            restaurantError,
+                          ].any((e) => e != null))
+                            return;
 
                           Navigator.pop(modalContext);
                           await Future.delayed(
                             const Duration(milliseconds: 100),
                           );
-
-                          if (!mounted) return;
                           setState(() => _isLoading = true);
 
                           try {
@@ -358,7 +348,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                               await _userService.createUserWithCredentials(
                                 email: email,
                                 password: password,
-                                role: 'kitchen',
+                                role: 'manager',
                                 restaurantId: restaurantId,
                               );
                             } else {
@@ -372,13 +362,13 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                               await _userService.updateUser(updatedUser);
                             }
 
-                            await _loadKitchenStaff();
+                            await _loadManagers();
 
                             SnackbarHelper.show(
                               parentContext,
                               message: existing == null
-                                  ? 'Kitchen staff added successfully'
-                                  : 'Kitchen staff updated successfully',
+                                  ? 'Manager added successfully'
+                                  : 'Manager updated successfully',
                               type: MessageType.success,
                             );
                           } on FirebaseAuthException catch (e) {
@@ -389,11 +379,9 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                                 type: MessageType.error,
                               );
                             }
-                          }
-
+                          } catch (_) {}
                           if (mounted) setState(() => _isLoading = false);
                         },
-
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.pinkThemed,
                           shape: RoundedRectangleBorder(
@@ -422,7 +410,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text('Delete Staff?'),
+        title: const Text('Delete Manager?'),
         content: Text('Are you sure you want to delete ${user.email}?'),
         actions: [
           TextButton(
@@ -434,7 +422,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
               Navigator.pop(dialogContext);
               setState(() => _isLoading = true);
               await _userService.deleteUser(user.uid);
-              await _loadKitchenStaff();
+              await _loadManagers();
               if (mounted) {
                 SnackbarHelper.show(
                   context,
@@ -467,7 +455,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Kitchen Staff',
+                          'Managers',
                           style: textTheme.headlineSmall?.copyWith(
                             color: Colors.white,
                           ),
@@ -479,7 +467,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                           size: 36,
                           color: Colors.white,
                         ),
-                        onPressed: () => _showStaffModal(),
+                        onPressed: () => _showManagerModal(),
                       ),
                     ],
                   ),
@@ -496,14 +484,14 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                       padding: const EdgeInsets.all(20),
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
-                          : _kitchenStaff.isEmpty
-                          ? const Center(child: Text('No kitchen staff found'))
+                          : _managers.isEmpty
+                          ? const Center(child: Text('No managers found'))
                           : ListView.separated(
-                              itemCount: _kitchenStaff.length,
+                              itemCount: _managers.length,
                               separatorBuilder: (_, __) =>
                                   const SizedBox(height: 12),
                               itemBuilder: (_, index) {
-                                final staff = _kitchenStaff[index];
+                                final manager = _managers[index];
                                 return Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
@@ -527,7 +515,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            staff.email,
+                                            manager.email,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 15,
@@ -536,7 +524,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
-                                            'Restaurant: ${_restaurantNameById[staff.restaurantId] ?? "-"}',
+                                            'Restaurant: ${_restaurantNameById[manager.restaurantId] ?? "-"}',
                                             style: const TextStyle(
                                               fontSize: 13,
                                               color: AppColors.textSecondary,
@@ -555,9 +543,10 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                                                 size: 18,
                                                 color: AppColors.primary,
                                               ),
-                                              onPressed: () => _showStaffModal(
-                                                existing: staff,
-                                              ),
+                                              onPressed: () =>
+                                                  _showManagerModal(
+                                                    existing: manager,
+                                                  ),
                                               tooltip: 'Edit',
                                             ),
                                           ),
@@ -572,7 +561,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                                                 color: AppColors.primary,
                                               ),
                                               onPressed: () =>
-                                                  _confirmDelete(staff),
+                                                  _confirmDelete(manager),
                                               tooltip: 'Delete',
                                             ),
                                           ),
@@ -590,7 +579,7 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
             ),
           ),
         ),
-        if (_isLoading && _kitchenStaff.isNotEmpty)
+        if (_isLoading && _managers.isNotEmpty)
           const IgnorePointer(child: CustomLoader()),
       ],
     );

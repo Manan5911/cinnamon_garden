@@ -23,6 +23,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   @override
@@ -105,6 +106,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _showDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -221,31 +239,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   controller: _passwordController,
                                   label: 'Password',
                                   icon: Icons.lock_outline,
-                                  obscureText: true,
+                                  isPassword: true,
                                 ),
                                 const SizedBox(height: 10),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (ctx) => AlertDialog(
-                                          backgroundColor: Colors.white,
-                                          title: const Text('Forgot Password?'),
-                                          content: const Text(
-                                            'Please contact Admin to reset your password.',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(ctx).pop(),
-                                              child: const Text('OK'),
+                                    onPressed: () async {
+                                      final email = _emailController.text
+                                          .trim();
+
+                                      if (email.isEmpty ||
+                                          !email.contains('@')) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: Colors.white,
+                                            title: const Text('Invalid Email'),
+                                            content: const Text(
+                                              'Please enter a valid email to reset your password.',
                                             ),
-                                          ],
-                                        ),
-                                      );
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('OK'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      try {
+                                        await FirebaseAuth.instance
+                                            .sendPasswordResetEmail(
+                                              email: email,
+                                            );
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: Colors.white,
+                                            title: const Text(
+                                              'Reset Email Sent',
+                                            ),
+                                            content: const Text(
+                                              'A password reset email has been sent. Please check your inbox.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('OK'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      } catch (e) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: Colors.white,
+                                            title: const Text('Error'),
+                                            content: Text(
+                                              'Something went wrong: ${e.toString()}',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('OK'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
                                     },
+
                                     child: const Text(
                                       'Forgot Password?',
                                       style: TextStyle(
@@ -337,10 +407,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required IconData icon,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
+    bool isPassword = false,
   }) {
     return TextField(
       controller: controller,
-      obscureText: obscureText,
+      obscureText: isPassword ? _obscurePassword : false,
       keyboardType: keyboardType,
       style: const TextStyle(
         color: AppColors.text,
@@ -355,6 +426,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w400,
         ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              )
+            : null,
         filled: true,
         fillColor: AppColors.background.withOpacity(0.25),
         contentPadding: const EdgeInsets.symmetric(

@@ -42,6 +42,9 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     );
     final parentContext = context;
 
+    String? nameError;
+    String? addressError;
+
     showModalBottomSheet(
       context: parentContext,
       isScrollControlled: true,
@@ -50,128 +53,150 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(modalContext).viewInsets.bottom,
-            left: 20,
-            right: 20,
-            top: 20,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    existing == null ? 'Add Restaurant' : 'Edit Restaurant',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Restaurant Name',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade500),
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(modalContext).viewInsets.bottom,
+              left: 20,
+              right: 20,
+              top: 20,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      existing == null ? 'Add Restaurant' : 'Edit Restaurant',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: addressController,
-                    decoration: InputDecoration(
-                      labelText: 'Address',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade500),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        final address = addressController.text.trim();
-                        if (name.isEmpty || address.isEmpty) return;
+                    const SizedBox(height: 16),
 
-                        Navigator.of(modalContext).pop(); // Close modal
-
-                        await Future.delayed(const Duration(milliseconds: 100));
-                        if (!mounted) return;
-
-                        setState(() => _isLoading = true);
-
-                        final restaurant = Restaurant(
-                          id: existing?.id ?? const Uuid().v4(),
-                          name: name,
-                          address: address,
-                        );
-
-                        try {
-                          if (existing == null) {
-                            await _restaurantService.createRestaurant(
-                              restaurant,
-                            );
-                          } else {
-                            await _restaurantService.updateRestaurant(
-                              restaurant,
-                            );
-                          }
-
-                          if (!mounted) return;
-                          await _loadRestaurants();
-
-                          if (!mounted) return;
-                          SnackbarHelper.show(
-                            parentContext, // use this instead of `context`
-                            message: existing == null
-                                ? 'Restaurant added successfully'
-                                : 'Restaurant updated successfully',
-                            type: MessageType.success,
-                          );
-                        } catch (_) {
-                          // Show error if you want
-                        } finally {
-                          if (mounted) setState(() => _isLoading = false);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.pinkThemed,
-                        shape: RoundedRectangleBorder(
+                    // Restaurant Name
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Restaurant Name',
+                        errorText: nameError,
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      child: Text(
-                        existing == null ? 'Add' : 'Update',
-                        style: const TextStyle(color: Colors.black),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade500),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-              );
-            },
+                    const SizedBox(height: 12),
+
+                    // Address
+                    TextField(
+                      controller: addressController,
+                      decoration: InputDecoration(
+                        labelText: 'Address',
+                        errorText: addressError,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade500),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final name = nameController.text.trim();
+                          final address = addressController.text.trim();
+
+                          setModalState(() {
+                            nameError = name.isEmpty
+                                ? "Name is required"
+                                : null;
+                            addressError = address.isEmpty
+                                ? "Address is required"
+                                : null;
+                          });
+
+                          if (nameError != null || addressError != null) return;
+
+                          Navigator.of(modalContext).pop();
+
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+                          if (!mounted) return;
+
+                          setState(() => _isLoading = true);
+
+                          final restaurant = Restaurant(
+                            id: existing?.id ?? const Uuid().v4(),
+                            name: name,
+                            address: address,
+                          );
+
+                          try {
+                            if (existing == null) {
+                              await _restaurantService.createRestaurant(
+                                restaurant,
+                              );
+                            } else {
+                              await _restaurantService.updateRestaurant(
+                                restaurant,
+                              );
+                            }
+
+                            if (!mounted) return;
+                            await _loadRestaurants();
+
+                            if (!mounted) return;
+                            SnackbarHelper.show(
+                              parentContext,
+                              message: existing == null
+                                  ? 'Restaurant added successfully'
+                                  : 'Restaurant updated successfully',
+                              type: MessageType.success,
+                            );
+                          } catch (_) {
+                            // handle error if needed
+                          } finally {
+                            if (mounted) setState(() => _isLoading = false);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.pinkThemed,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          existing == null ? 'Add' : 'Update',
+                          style: const TextStyle(color: Colors.black),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },

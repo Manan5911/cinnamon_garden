@@ -1,6 +1,7 @@
 import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
 import 'package:booking_management_app/core/screens/admin/kitchen_staff_screen.dart';
+import 'package:booking_management_app/core/screens/admin/manager_screen.dart';
 import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
@@ -39,7 +40,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   final List<Widget> _screens = [
     const BookingHome(),
     const KitchenStaffScreen(),
-    const Center(child: Text('Managers')),
+    const ManagerScreen(),
     const RestaurantScreen(),
     const Center(child: Text('More')),
   ];
@@ -134,21 +135,34 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
   DateTimeRange? _selectedRange;
   bool _isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
+  DateTimeRange _defaultRange() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-    _selectedRange = DateTimeRange(start: today, end: tomorrow);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(bookingFilterControllerProvider.notifier)
-          .filterByDateRange(_selectedRange!);
-    });
+    return DateTimeRange(start: today, end: tomorrow);
   }
 
   @override
+  void initState() {
+    super.initState();
+    _selectedRange = _defaultRange();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_selectedRange != null) {
+        final controller = ref.read(bookingFilterControllerProvider.notifier);
+        // Only re-filter if not already filtering with this range
+        if (!controller.isFiltering ||
+            controller.selectedRange != _selectedRange) {
+          controller.filterByDateRange(_selectedRange!);
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(bookingFilterControllerProvider.notifier);
@@ -274,12 +288,23 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                                     context: context,
                                     isScrollControlled: true,
                                     backgroundColor: Colors.transparent,
-                                    builder: (_) => _DateRangeModal(
-                                      initialRange: _selectedRange!,
-                                      onApply: (range) {
-                                        setState(() => _selectedRange = range);
-                                        controller.filterByDateRange(range);
-                                      },
+                                    builder: (ctx) => SingleChildScrollView(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(
+                                            ctx,
+                                          ).viewInsets.bottom,
+                                        ),
+                                        child: _DateRangeModal(
+                                          initialRange: _selectedRange!,
+                                          onApply: (range) {
+                                            setState(
+                                              () => _selectedRange = range,
+                                            );
+                                            controller.filterByDateRange(range);
+                                          },
+                                        ),
+                                      ),
                                     ),
                                   );
                                 },

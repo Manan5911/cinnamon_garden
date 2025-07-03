@@ -15,6 +15,8 @@ final bookingFilterControllerProvider =
 class BookingFilterController
     extends StateNotifier<AsyncValue<List<BookingModel>>> {
   final Ref ref;
+  List<BookingModel> _allBookings = [];
+
   BookingFilterController(this.ref) : super(const AsyncValue.loading()) {
     loadUpcomingBookings();
   }
@@ -27,13 +29,17 @@ class BookingFilterController
     try {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      final allBookings = await BookingService().fetchBookings();
-      final upcoming = allBookings.where((b) {
+      _allBookings = await BookingService().fetchBookings();
+
+      final upcoming = _allBookings.where((b) {
         final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
         return bookingDate.isAfter(today) ||
             bookingDate.isAtSameMomentAs(today);
       }).toList();
-      print('[DEBUG] Fetched ${upcoming.length} upcoming bookings');
+
+      print('[DEBUG] Fetched ${_allBookings.length} bookings');
+      print('[DEBUG] Upcoming bookings count: ${upcoming.length}');
+
       state = AsyncValue.data(upcoming);
       selectedRange = null;
       isFiltering = false;
@@ -43,42 +49,49 @@ class BookingFilterController
     }
   }
 
-  Future<void> filterByDateRange(DateTimeRange range) async {
-    state = const AsyncValue.loading();
-    try {
-      final start = DateTime(
-        range.start.year,
-        range.start.month,
-        range.start.day,
-      );
-      final end = DateTime(
-        range.end.year,
-        range.end.month,
-        range.end.day,
-        23,
-        59,
-        59,
-      );
+  void filterByDateRange(DateTimeRange range) {
+    selectedRange = range;
+    isFiltering = true;
 
-      final allBookings = await BookingService().fetchBookings();
-      final filtered = allBookings.where((b) {
-        final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
-        return (bookingDate.isAtSameMomentAs(start) ||
-            bookingDate.isAtSameMomentAs(end) ||
-            (bookingDate.isAfter(start) && bookingDate.isBefore(end)));
-      }).toList();
+    final start = DateTime(
+      range.start.year,
+      range.start.month,
+      range.start.day,
+    );
+    final end = DateTime(
+      range.end.year,
+      range.end.month,
+      range.end.day,
+      23,
+      59,
+      59,
+    );
 
-      print('[DEBUG] Filtered bookings count: ${filtered.length}');
-      state = AsyncValue.data(filtered);
-      selectedRange = range;
-      isFiltering = true;
-    } catch (e, st) {
-      print('[ERROR] Filtering failed: $e');
-      state = AsyncValue.error(e, st);
-    }
+    final filtered = _allBookings.where((b) {
+      final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
+      return (bookingDate.isAtSameMomentAs(start) ||
+          bookingDate.isAtSameMomentAs(end) ||
+          (bookingDate.isAfter(start) && bookingDate.isBefore(end)));
+    }).toList();
+
+    print('[DEBUG] Filtered bookings count: ${filtered.length}');
+    state = AsyncValue.data(filtered);
   }
 
-  void resetFilter() => loadUpcomingBookings();
+  void resetFilter() {
+    selectedRange = null;
+    isFiltering = false;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final upcoming = _allBookings.where((b) {
+      final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
+      return bookingDate.isAfter(today) || bookingDate.isAtSameMomentAs(today);
+    }).toList();
+
+    state = AsyncValue.data(upcoming);
+  }
 
   String getHeading() {
     if (!isFiltering || selectedRange == null) return "Total";

@@ -146,19 +146,12 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
   void initState() {
     super.initState();
     _selectedRange = _defaultRange();
-  }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final controller = ref.read(bookingFilterControllerProvider.notifier);
+      await controller.loadAllBookings();
       if (_selectedRange != null) {
-        final controller = ref.read(bookingFilterControllerProvider.notifier);
-        // Only re-filter if not already filtering with this range
-        if (!controller.isFiltering ||
-            controller.selectedRange != _selectedRange) {
-          controller.filterByDateRange(_selectedRange!);
-        }
+        controller.filterByDateRange(_selectedRange!);
       }
     });
   }
@@ -230,10 +223,6 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                           ref
                               .read(bookingFilterControllerProvider.notifier)
                               .filterByDateRange(_selectedRange!);
-                        } else {
-                          ref
-                              .read(bookingFilterControllerProvider.notifier)
-                              .loadUpcomingBookings();
                         }
                       }
                     },

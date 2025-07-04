@@ -22,6 +22,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
   final _companyNameController = TextEditingController();
   final _tableNumberController = TextEditingController();
   final _ratePerPersonController = TextEditingController();
+  final _extraDetailsController = TextEditingController();
   final _members = ValueNotifier<int>(1);
   bool _isLoading = false;
 
@@ -42,6 +43,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
     _companyNameController.dispose();
     _tableNumberController.dispose();
     _ratePerPersonController.dispose();
+    _extraDetailsController.dispose();
     super.dispose();
   }
 
@@ -175,6 +177,33 @@ class _AddBookingPageState extends State<AddBookingPage> {
                               _companyNameController,
                               "Company Name (optional)",
                             ),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: TextFormField(
+                                controller: _extraDetailsController,
+                                maxLines: 4,
+                                decoration: InputDecoration(
+                                  labelText: "Extra Details (optional)",
+                                  alignLabelWithHint: true,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide(
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
                             _buildCustomDropdown(
                               label: "Restaurant",
                               items: ["Restaurant A", "Restaurant B"],
@@ -633,6 +662,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
             tableNumber: _isDineIn ? _tableNumberController.text.trim() : null,
             guideName: _guideNameController.text.trim(),
             guideMobile: _mobileController.text.trim(),
+            extraDetails: _extraDetailsController.text.trim(),
             companyName: _companyNameController.text.trim(),
             restaurantId: _selectedRestaurant!,
             assignedManagerId: _assignedManager!,

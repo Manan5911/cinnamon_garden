@@ -18,11 +18,24 @@ class BookingFilterController
   List<BookingModel> _allBookings = [];
 
   BookingFilterController(this.ref) : super(const AsyncValue.loading()) {
-    loadUpcomingBookings();
+    // loadAllBookings();
   }
 
   DateTimeRange? selectedRange;
   bool isFiltering = false;
+
+  Future<void> loadAllBookings() async {
+    state = const AsyncValue.loading();
+    try {
+      _allBookings = await BookingService().fetchBookings();
+      state = AsyncValue.data(_allBookings);
+      selectedRange = null;
+      isFiltering = false;
+    } catch (e, st) {
+      print('[ERROR] Failed to fetch all bookings: $e');
+      state = AsyncValue.error(e, st);
+    }
+  }
 
   Future<void> loadUpcomingBookings() async {
     state = const AsyncValue.loading();
@@ -36,9 +49,6 @@ class BookingFilterController
         return bookingDate.isAfter(today) ||
             bookingDate.isAtSameMomentAs(today);
       }).toList();
-
-      print('[DEBUG] Fetched ${_allBookings.length} bookings');
-      print('[DEBUG] Upcoming bookings count: ${upcoming.length}');
 
       state = AsyncValue.data(upcoming);
       selectedRange = null;
@@ -74,7 +84,6 @@ class BookingFilterController
           (bookingDate.isAfter(start) && bookingDate.isBefore(end)));
     }).toList();
 
-    print('[DEBUG] Filtered bookings count: ${filtered.length}');
     state = AsyncValue.data(filtered);
   }
 

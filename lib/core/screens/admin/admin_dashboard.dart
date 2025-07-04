@@ -1,10 +1,13 @@
+import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
 import 'package:booking_management_app/core/screens/admin/kitchen_staff_screen.dart';
 import 'package:booking_management_app/core/screens/admin/manager_screen.dart';
 import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
+import 'package:booking_management_app/core/screens/admin/view_booking_screen.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -134,6 +137,8 @@ class BookingHome extends ConsumerStatefulWidget {
 class _BookingHomeState extends ConsumerState<BookingHome> {
   DateTimeRange? _selectedRange;
   bool _isLoading = false;
+  Map<String, String> _restaurantMap = {};
+  Map<String, String> _managerMap = {};
 
   DateTimeRange _defaultRange() {
     final now = DateTime.now();
@@ -149,6 +154,23 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final controller = ref.read(bookingFilterControllerProvider.notifier);
+
+      // Preload metadata
+      final restaurantSnap = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .get();
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
+
+      _restaurantMap = {
+        for (var doc in restaurantSnap.docs) doc.id: doc['name'] ?? 'Unknown',
+      };
+
+      _managerMap = {
+        for (var doc in userSnap.docs) doc.id: doc['email'] ?? 'N/A',
+      };
+
       await controller.loadAllBookings();
       if (_selectedRange != null) {
         controller.filterByDateRange(_selectedRange!);
@@ -203,18 +225,8 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                     ),
                     onPressed: () async {
                       final result = await Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (_, __, ___) => const AddBookingPage(),
-                          transitionsBuilder: (_, animation, __, child) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 1),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: child,
-                            );
-                          },
-                          transitionDuration: const Duration(milliseconds: 500),
+                        MaterialPageRoute(
+                          builder: (_) => const AddBookingPage(),
                         ),
                       );
 
@@ -339,13 +351,8 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                                       horizontal: 20,
                                     ),
                                     itemCount: bookings.length,
-                                    itemBuilder: (_, i) => _buildBookingTile(
-                                      name: bookings[i].guideName,
-                                      date: DateFormat(
-                                        'd MMM',
-                                      ).format(bookings[i].date),
-                                      type: bookings[i].type.name,
-                                    ),
+                                    itemBuilder: (_, i) =>
+                                        _buildBookingTile(booking: bookings[i]),
                                   ),
                                 ],
                               ),
@@ -394,57 +401,73 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
     );
   }
 
-  Widget _buildBookingTile({
-    required String name,
-    required String date,
-    required String type,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$date • $type',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+  Widget _buildBookingTile({required BookingModel booking}) {
+    return GestureDetector(
+      onTap: () {
+        final restaurantName =
+            _restaurantMap[booking.restaurantId] ?? 'Unknown';
+        final managerEmail = _managerMap[booking.assignedManagerId] ?? 'N/A';
+
+        if (!context.mounted) return;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ViewBookingScreen(
+              booking: booking,
+              restaurantName: restaurantName,
+              managerEmail: managerEmail,
             ),
           ),
-          const Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 16,
-            color: AppColors.primary,
-          ),
-        ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    booking.guideName,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${DateFormat('d MMM').format(booking.date)} • ${booking.type.name}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:booking_management_app/core/models/menu_item_model.dart';
 import 'package:booking_management_app/core/services/booking_service.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
@@ -30,11 +31,55 @@ class _AddBookingPageState extends State<AddBookingPage> {
   bool _isDineIn = true;
   List<MenuItemModel> _dineInItems = [];
   List<MenuItemModel> _cateringItems = [];
+  List<Map<String, dynamic>> _restaurantOptions = [];
+  List<Map<String, dynamic>> _managerOptions = [];
   String? _selectedRestaurant;
   String? _assignedManager;
 
   List<MenuItemModel> get _menuItems =>
       _isDineIn ? _dineInItems : _cateringItems;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDropdownData();
+  }
+
+  Future<void> _fetchDropdownData() async {
+    try {
+      final restaurantSnap = await FirebaseFirestore.instance
+          .collection('restaurants')
+          .get();
+
+      final managerSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'manager')
+          .get();
+
+      setState(() {
+        _restaurantOptions = restaurantSnap.docs
+            .map(
+              (e) => {
+                'id': e.id,
+                'name': e['name'] ?? '',
+                'address': e['address'] ?? '',
+              },
+            )
+            .toList();
+
+        _managerOptions = managerSnap.docs
+            .map((e) => {'id': e.id, 'email': e['email'] ?? ''})
+            .toList();
+      });
+    } catch (e) {
+      print("❌ Error fetching dropdowns: $e");
+      SnackbarHelper.show(
+        context,
+        message: 'Error loading data',
+        type: MessageType.error,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -129,7 +174,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
                       children: [
                         IconButton(
                           icon: const Icon(
-                            Icons.arrow_back,
+                            Icons.arrow_back_ios_new_rounded,
                             color: Colors.white,
                           ),
                           onPressed: () => Navigator.pop(context),
@@ -204,12 +249,12 @@ class _AddBookingPageState extends State<AddBookingPage> {
                               ),
                             ),
 
-                            _buildCustomDropdown(
+                            _buildDropdownWithMap(
                               label: "Restaurant",
-                              items: ["Restaurant A", "Restaurant B"],
-                              selected: _selectedRestaurant,
-                              onChanged: (val) =>
-                                  setState(() => _selectedRestaurant = val),
+                              options: _restaurantOptions,
+                              selectedId: _selectedRestaurant,
+                              onChanged: (id) =>
+                                  setState(() => _selectedRestaurant = id),
                             ),
                             _buildMembersField(),
                             if (!_isDineIn)
@@ -219,12 +264,12 @@ class _AddBookingPageState extends State<AddBookingPage> {
                                 type: TextInputType.number,
                                 required: !_isDineIn,
                               ),
-                            _buildCustomDropdown(
+                            _buildDropdownWithMap(
                               label: "Assigned Manager",
-                              items: ["Manager 1", "Manager 2"],
-                              selected: _assignedManager,
-                              onChanged: (val) =>
-                                  setState(() => _assignedManager = val),
+                              options: _managerOptions,
+                              selectedId: _assignedManager,
+                              onChanged: (id) =>
+                                  setState(() => _assignedManager = id),
                             ),
                             const SizedBox(height: 20),
                             _buildAddMenuButton(),
@@ -312,12 +357,17 @@ class _AddBookingPageState extends State<AddBookingPage> {
     );
   }
 
-  Widget _buildCustomDropdown({
+  Widget _buildDropdownWithMap({
     required String label,
-    required List<String> items,
-    required String? selected,
+    required List<Map<String, dynamic>> options,
+    required String? selectedId,
     required Function(String) onChanged,
   }) {
+    final selectedItem = options.firstWhere(
+      (opt) => opt['id'] == selectedId,
+      orElse: () => {},
+    );
+
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Column(
@@ -326,7 +376,13 @@ class _AddBookingPageState extends State<AddBookingPage> {
           Text(label, style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 6),
           GestureDetector(
-            onTap: () => _showCustomDropdown(items, selected, onChanged),
+            onTap: () {
+              _showDropdownBottomSheet(
+                label: label,
+                options: options,
+                onSelected: onChanged,
+              );
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
@@ -336,11 +392,20 @@ class _AddBookingPageState extends State<AddBookingPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    selected ?? 'Select $label',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: selected == null ? Colors.grey : Colors.black,
+                  Expanded(
+                    child: Text(
+                      selectedItem.isEmpty
+                          ? 'Select $label'
+                          : (label == 'Restaurant'
+                                ? "${selectedItem['name']} (${selectedItem['address']})"
+                                : selectedItem['email'] ?? ''),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: selectedItem.isEmpty
+                            ? Colors.grey
+                            : Colors.black,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const Icon(Icons.arrow_drop_down),
@@ -353,38 +418,56 @@ class _AddBookingPageState extends State<AddBookingPage> {
     );
   }
 
-  void _showCustomDropdown(
-    List<String> items,
-    String? selected,
-    Function(String) onSelected,
-  ) {
+  void _showDropdownBottomSheet({
+    required String label,
+    required List<Map<String, dynamic>> options,
+    required Function(String) onSelected,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return ListView.separated(
           shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          itemCount: items.length,
-          separatorBuilder: (_, __) =>
-              Divider(height: 1, color: Colors.grey.shade200, thickness: 1),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return InkWell(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          itemCount: options.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (_, index) {
+            final item = options[index];
+            final title = label == 'Restaurant'
+                ? item['name'] ?? 'Unnamed'
+                : item['email'] ?? 'Unnamed';
+            final subtitle = label == 'Restaurant'
+                ? item['address'] ?? 'No address'
+                : null;
+
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              dense: true,
+              visualDensity: const VisualDensity(vertical: -2),
+              title: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: subtitle != null
+                  ? Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    )
+                  : null,
               onTap: () {
                 Navigator.pop(context);
-                onSelected(item);
+                onSelected(item['id']);
               },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                child: Text(item, style: const TextStyle(fontSize: 15)),
-              ),
             );
           },
         );
@@ -760,6 +843,14 @@ class _AddMenuItemModalState extends State<_AddMenuItemModal> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade500),
+              ),
             ),
           ),
           if (!widget.isCatering) ...[
@@ -771,6 +862,14 @@ class _AddMenuItemModalState extends State<_AddMenuItemModal> {
                 labelText: "Price (CHF)",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade500),
                 ),
               ),
             ),

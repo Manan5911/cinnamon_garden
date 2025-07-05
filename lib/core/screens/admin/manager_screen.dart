@@ -187,88 +187,113 @@ class _ManagerScreenState extends State<ManagerScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-
-                    GestureDetector(
-                      onTap: () async {
-                        final restaurants = await RestaurantService()
-                            .getAllRestaurants();
-                        if (!mounted) return;
-
-                        showModalBottomSheet(
-                          context: context,
-                          backgroundColor: Colors.white,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(24),
-                            ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Restaurant',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey,
                           ),
-                          builder: (context) {
-                            return ListView.separated(
-                              shrinkWrap: true,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                        ),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final restaurants = await RestaurantService()
+                                .getAllRestaurants();
+                            if (!mounted) return;
+
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
                               ),
-                              itemCount: restaurants.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1),
-                              itemBuilder: (_, index) {
-                                final r = restaurants[index];
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                              builder: (context) {
+                                return ListView.separated(
+                                  shrinkWrap: true,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
-                                  dense: true,
-                                  visualDensity: const VisualDensity(
-                                    vertical: -2,
-                                  ),
-                                  title: Text(
-                                    r.name,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    r.address,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    setModalState(() {
-                                      selectedRestaurant = r;
-                                    });
-                                    Navigator.pop(context);
+                                  itemCount: restaurants.length,
+                                  separatorBuilder: (_, __) =>
+                                      const Divider(height: 1),
+                                  itemBuilder: (_, index) {
+                                    final r = restaurants[index];
+                                    return ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                      dense: true,
+                                      visualDensity: const VisualDensity(
+                                        vertical: -2,
+                                      ),
+                                      title: Text(
+                                        r.name,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        r.address,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        setModalState(() {
+                                          selectedRestaurant = r;
+                                        });
+                                        Navigator.pop(context);
+                                      },
+                                    );
                                   },
                                 );
                               },
                             );
                           },
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          selectedRestaurant?.name ?? 'Select Restaurant',
-                          style: TextStyle(
-                            color: selectedRestaurant == null
-                                ? Colors.grey
-                                : Colors.black,
-                            fontSize: 16,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              selectedRestaurant?.name ?? 'Select Restaurant',
+                              style: TextStyle(
+                                color: selectedRestaurant == null
+                                    ? Colors.grey
+                                    : Colors.black,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        if (restaurantError != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6, left: 6),
+                            child: Text(
+                              restaurantError!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     if (restaurantError != null)
                       Padding(

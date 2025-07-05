@@ -36,6 +36,40 @@ class BookingModel {
     this.isClosed = false,
   });
 
+  BookingModel copyWith({
+    String? id,
+    BookingType? type,
+    DateTime? date,
+    int? members,
+    String? restaurantId,
+    String? tableNumber,
+    String? extraDetails,
+    String? guideName,
+    String? guideMobile,
+    String? companyName,
+    String? assignedManagerId,
+    List<MenuItemModel>? menuItems,
+    double? ratePerPerson,
+    bool? isClosed,
+  }) {
+    return BookingModel(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      date: date ?? this.date,
+      members: members ?? this.members,
+      restaurantId: restaurantId ?? this.restaurantId,
+      tableNumber: tableNumber ?? this.tableNumber,
+      extraDetails: extraDetails ?? this.extraDetails,
+      guideName: guideName ?? this.guideName,
+      guideMobile: guideMobile ?? this.guideMobile,
+      companyName: companyName ?? this.companyName,
+      assignedManagerId: assignedManagerId ?? this.assignedManagerId,
+      menuItems: menuItems ?? this.menuItems,
+      ratePerPerson: ratePerPerson ?? this.ratePerPerson,
+      isClosed: isClosed ?? this.isClosed,
+    );
+  }
+
   factory BookingModel.fromMap(Map<String, dynamic> map, String id) {
     return BookingModel(
       id: id,

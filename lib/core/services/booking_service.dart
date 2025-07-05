@@ -29,7 +29,15 @@ class BookingService {
 
   /// 🔹 Update existing booking
   Future<void> updateBooking(BookingModel booking) async {
-    await _bookingCollection.doc(booking.id).update(booking.toMap());
+    final data = booking.toMap();
+
+    if (booking.type == BookingType.catering) {
+      data['tableNumber'] = FieldValue.delete();
+    } else if (booking.type == BookingType.dineIn) {
+      data['ratePerPerson'] = FieldValue.delete();
+    }
+
+    await _bookingCollection.doc(booking.id).update(data);
   }
 
   /// 🔹 Delete a booking
@@ -70,16 +78,6 @@ class BookingService {
     return query.docs
         .map((doc) => BookingModel.fromMap(doc.data(), doc.id))
         .toList();
-  }
-
-  /// 🔹 Assign manager to booking
-  Future<void> assignManagerToBooking(
-    String bookingId,
-    String managerId,
-  ) async {
-    await _bookingCollection.doc(bookingId).update({
-      'assignedManagerId': managerId,
-    });
   }
 
   /// 🔹 Close a booking

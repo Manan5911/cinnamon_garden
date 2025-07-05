@@ -5,9 +5,12 @@ import 'package:booking_management_app/core/screens/admin/kitchen_staff_screen.d
 import 'package:booking_management_app/core/screens/admin/manager_screen.dart';
 import 'package:booking_management_app/core/screens/admin/restaurant_screen.dart';
 import 'package:booking_management_app/core/screens/admin/view_booking_screen.dart';
+import 'package:booking_management_app/core/screens/auth/login_screen.dart';
+import 'package:booking_management_app/core/utils/constants.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,7 +100,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _customBarItem(Icons.event_note_outlined, 'Booking', 0),
             _customBarItem(Icons.restaurant_menu_outlined, 'Kitchen', 1),
             _customBarItem(Icons.people_outline, 'Managers', 2),
-            _customBarItem(Icons.storefront_outlined, 'Restaurant', 3),
+            _customBarItem(Icons.storefront_outlined, 'Restaurants', 3),
             _customBarItem(Icons.settings_outlined, 'More', 4),
           ],
         ),
@@ -134,7 +137,7 @@ class BookingHome extends ConsumerStatefulWidget {
   ConsumerState<BookingHome> createState() => _BookingHomeState();
 }
 
-class _BookingHomeState extends ConsumerState<BookingHome> {
+class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
   DateTimeRange? _selectedRange;
   bool _isLoading = false;
   Map<String, String> _restaurantMap = {};
@@ -148,6 +151,38 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
   }
 
   @override
+  void didPopNext() {
+    // Called when coming back to this screen
+    refreshBookings();
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this); // 👈 unsubscribe
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  Future<void> refreshBookings() async {
+    try {
+      final controller = ref.read(bookingFilterControllerProvider.notifier);
+      await controller.loadAllBookings();
+      if (_selectedRange != null) {
+        print("Called");
+        controller.filterByDateRange(_selectedRange!);
+      }
+    } finally {}
+  }
+
+  @override
   void initState() {
     super.initState();
     _selectedRange = _defaultRange();
@@ -155,7 +190,6 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final controller = ref.read(bookingFilterControllerProvider.notifier);
 
-      // Preload metadata
       final restaurantSnap = await FirebaseFirestore.instance
           .collection('restaurants')
           .get();
@@ -163,13 +197,14 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
           .collection('users')
           .get();
 
-      _restaurantMap = {
-        for (var doc in restaurantSnap.docs) doc.id: doc['name'] ?? 'Unknown',
-      };
-
-      _managerMap = {
-        for (var doc in userSnap.docs) doc.id: doc['email'] ?? 'N/A',
-      };
+      setState(() {
+        _restaurantMap = {
+          for (var doc in restaurantSnap.docs) doc.id: doc['name'] ?? 'Unknown',
+        };
+        _managerMap = {
+          for (var doc in userSnap.docs) doc.id: doc['email'] ?? 'N/A',
+        };
+      });
 
       await controller.loadAllBookings();
       if (_selectedRange != null) {
@@ -192,16 +227,114 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // Modern Profile Icon with Modal Sheet
+                  GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) {
+                          return Container(
+                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(28),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Drag handle
+                                Center(
+                                  child: Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade300,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Admin Menu Title (not a tile)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(
+                                    'Admin Menu',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 16),
+
+                                // Divider
+                                const Divider(
+                                  height: 1,
+                                  color: Color(0xFFE0E0E0),
+                                ),
+
+                                // Menu item(s)
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(
+                                    Icons.logout,
+                                    color: Colors.redAccent,
+                                  ),
+                                  title: const Text(
+                                    'Logout',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  onTap: () async {
+                                    Navigator.pop(context);
+                                    await FirebaseAuth.instance.signOut();
+                                    if (context.mounted) {
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const LoginScreen(),
+                                        ),
+                                        (route) => false,
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: const Icon(
+                      Icons.account_circle_outlined,
+                      size: 42,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Greeting + Date Filter
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Hi, Admin',
-                          style: textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                          ),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -210,13 +343,14 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                               : _selectedRange!.start == _selectedRange!.end
                               ? 'Showing for ${DateFormat('d MMM yyyy').format(_selectedRange!.start)}'
                               : 'From ${DateFormat('d MMM').format(_selectedRange!.start)} to ${DateFormat('d MMM yyyy').format(_selectedRange!.end)}',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: Colors.white70,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.white70),
                         ),
                       ],
                     ),
                   ),
+
+                  // Add Booking Button (intact)
                   IconButton(
                     icon: const Icon(
                       Icons.add_circle_outline,
@@ -229,142 +363,180 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
                           builder: (_) => const AddBookingPage(),
                         ),
                       );
-
-                      if (result == true) {
-                        if (_selectedRange != null) {
-                          ref
-                              .read(bookingFilterControllerProvider.notifier)
-                              .filterByDateRange(_selectedRange!);
-                        }
+                      if (result == true && _selectedRange != null) {
+                        ref
+                            .read(bookingFilterControllerProvider.notifier)
+                            .filterByDateRange(_selectedRange!);
                       }
                     },
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
             Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatBox(
-                                title: 'Open',
-                                value:
-                                    '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
-                              ),
+              child: RefreshIndicator(
+                onRefresh: refreshBookings,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(32),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildStatBox(
-                                title: 'Closed',
-                                value:
-                                    '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFE5EC),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.calendar_month,
-                                  color: Colors.black,
-                                ),
-                                onPressed: () {
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (ctx) => SingleChildScrollView(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          bottom: MediaQuery.of(
-                                            ctx,
-                                          ).viewInsets.bottom,
-                                        ),
-                                        child: _DateRangeModal(
-                                          initialRange: _selectedRange!,
-                                          onApply: (range) {
-                                            setState(
-                                              () => _selectedRange = range,
-                                            );
-                                            controller.filterByDateRange(range);
-                                          },
-                                        ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatBox(
+                                        title: 'Open',
+                                        value:
+                                            '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
                                       ),
                                     ),
-                                  );
-                                },
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _buildStatBox(
+                                        title: 'Closed',
+                                        value:
+                                            '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFE5EC),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: AppColors.border,
+                                        ),
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.calendar_month,
+                                          color: Colors.black,
+                                        ),
+                                        onPressed: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (ctx) =>
+                                                SingleChildScrollView(
+                                                  child: Padding(
+                                                    padding: EdgeInsets.only(
+                                                      bottom: MediaQuery.of(
+                                                        ctx,
+                                                      ).viewInsets.bottom,
+                                                    ),
+                                                    child: _DateRangeModal(
+                                                      initialRange:
+                                                          _selectedRange!,
+                                                      onApply: (range) {
+                                                        setState(
+                                                          () => _selectedRange =
+                                                              range,
+                                                        );
+                                                        controller
+                                                            .filterByDateRange(
+                                                              range,
+                                                            );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              bookingsAsync.when(
+                                loading: () => const SizedBox(
+                                  height: 300,
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                                error: (e, _) =>
+                                    Center(child: Text('Error: $e')),
+                                data: (bookings) => bookings.isEmpty
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(20),
+                                        child: Center(
+                                          child: Text('No bookings available'),
+                                        ),
+                                      )
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              20,
+                                              0,
+                                              20,
+                                              12,
+                                            ),
+                                            child: Text(
+                                              'Bookings (${bookings.length})',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ),
+                                          ListView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                            ),
+                                            itemCount: bookings.length,
+                                            itemBuilder: (_, i) =>
+                                                _buildBookingTile(
+                                                  booking: bookings[i],
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                              const SizedBox(
+                                height: 50,
+                              ), // To allow pull padding
+                            ],
+                          ),
                         ),
                       ),
-                      bookingsAsync.when(
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Center(child: Text('Error: $e')),
-                        data: (bookings) => bookings.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Center(
-                                  child: Text('No bookings available'),
-                                ),
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      20,
-                                      0,
-                                      20,
-                                      12,
-                                    ),
-                                    child: Text(
-                                      'Bookings (${bookings.length})',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  ListView.builder(
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
-                                    itemCount: bookings.length,
-                                    itemBuilder: (_, i) =>
-                                        _buildBookingTile(booking: bookings[i]),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
           ],
         ),
-        if (_isLoading) const Center(child: CustomLoader()),
+        if (_isLoading)
+          Positioned.fill(
+            child: Container(
+              color: Colors.white.withOpacity(0.5),
+              child: const Center(child: CustomLoader()),
+            ),
+          ),
       ],
     );
   }
@@ -403,14 +575,12 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
 
   Widget _buildBookingTile({required BookingModel booking}) {
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         final restaurantName =
             _restaurantMap[booking.restaurantId] ?? 'Unknown';
         final managerEmail = _managerMap[booking.assignedManagerId] ?? 'N/A';
 
-        if (!context.mounted) return;
-
-        Navigator.push(
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ViewBookingScreen(
@@ -420,6 +590,10 @@ class _BookingHomeState extends ConsumerState<BookingHome> {
             ),
           ),
         );
+
+        if (result == true) {
+          refreshBookings(); // ✅ Refresh on return
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

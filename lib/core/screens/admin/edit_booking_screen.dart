@@ -1,29 +1,34 @@
+// edit_booking_screen.dart
+// ✅ Full screen similar to AddBookingPage, but with prefilled values for editing
+
 import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/models/menu_item_model.dart';
 import 'package:booking_management_app/core/services/booking_service.dart';
+import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-class AddBookingPage extends StatefulWidget {
-  const AddBookingPage({super.key});
+class EditBookingPage extends StatefulWidget {
+  final BookingModel booking;
+
+  const EditBookingPage({super.key, required this.booking});
 
   @override
-  State<AddBookingPage> createState() => _AddBookingPageState();
+  State<EditBookingPage> createState() => _EditBookingPageState();
 }
 
-class _AddBookingPageState extends State<AddBookingPage> {
+class _EditBookingPageState extends State<EditBookingPage> {
   final _formKey = GlobalKey<FormState>();
-  final _guideNameController = TextEditingController();
-  final _mobileController = TextEditingController();
-  final _companyNameController = TextEditingController();
-  final _tableNumberController = TextEditingController();
-  final _ratePerPersonController = TextEditingController();
-  final _extraDetailsController = TextEditingController();
+  late TextEditingController _guideNameController;
+  late TextEditingController _mobileController;
+  late TextEditingController _companyNameController;
+  late TextEditingController _tableNumberController;
+  late TextEditingController _ratePerPersonController;
+  late TextEditingController _extraDetailsController;
   final _members = ValueNotifier<int>(1);
   bool _isLoading = false;
 
@@ -42,6 +47,25 @@ class _AddBookingPageState extends State<AddBookingPage> {
   @override
   void initState() {
     super.initState();
+    final b = widget.booking;
+    _guideNameController = TextEditingController(text: b.guideName);
+    _mobileController = TextEditingController(text: b.guideMobile);
+    _companyNameController = TextEditingController(text: b.companyName);
+    _tableNumberController = TextEditingController(text: b.tableNumber);
+    _ratePerPersonController = TextEditingController(
+      text: b.ratePerPerson?.toString(),
+    );
+    _extraDetailsController = TextEditingController(text: b.extraDetails);
+    _members.value = b.members;
+    _selectedDate = b.date;
+    _isDineIn = b.type == BookingType.dineIn;
+    if (_isDineIn) {
+      _dineInItems = List.from(b.menuItems);
+    } else {
+      _cateringItems = List.from(b.menuItems);
+    }
+    _selectedRestaurant = b.restaurantId;
+    _assignedManager = b.assignedManagerId;
     _fetchDropdownData();
   }
 
@@ -50,7 +74,6 @@ class _AddBookingPageState extends State<AddBookingPage> {
       final restaurantSnap = await FirebaseFirestore.instance
           .collection('restaurants')
           .get();
-
       final managerSnap = await FirebaseFirestore.instance
           .collection('users')
           .where('role', isEqualTo: 'manager')
@@ -68,43 +91,24 @@ class _AddBookingPageState extends State<AddBookingPage> {
             .toList();
 
         _managerOptions = managerSnap.docs
-            .map(
-              (e) => {
-                'id': e.id,
-                'email': e['email'] ?? '',
-                'restaurantId': e['restaurantId'] ?? '',
-              },
-            )
+            .map((e) => {'id': e.id, 'email': e['email'] ?? ''})
             .toList();
       });
     } catch (e) {
-      print("❌ Error fetching dropdowns: $e");
       SnackbarHelper.show(
         context,
-        message: 'Error loading data',
+        message: 'Error loading dropdowns',
         type: MessageType.error,
       );
     }
   }
 
-  @override
-  void dispose() {
-    _guideNameController.dispose();
-    _mobileController.dispose();
-    _companyNameController.dispose();
-    _tableNumberController.dispose();
-    _ratePerPersonController.dispose();
-    _extraDetailsController.dispose();
-    super.dispose();
-  }
-
   Future<void> _pickDate() async {
-    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: ColorScheme.light(
@@ -153,19 +157,96 @@ class _AddBookingPageState extends State<AddBookingPage> {
 
       setState(() {
         if (index != null) {
-          currentList[index] = item; // Editing
+          currentList[index] = item;
         } else {
-          currentList.add(item); // New
+          currentList.add(item);
         }
       });
     }
+  }
+
+  Future<void> _saveBooking() async {
+    if (_formKey.currentState?.validate() != true) return;
+    if (_selectedDate == null ||
+        _selectedRestaurant == null ||
+        _assignedManager == null) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please complete all required fields.',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (!_isDineIn &&
+        (_ratePerPersonController.text.trim().isEmpty ||
+            double.tryParse(_ratePerPersonController.text.trim()) == null)) {
+      SnackbarHelper.show(
+        context,
+        message: 'Enter valid rate per person',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_menuItems.isEmpty) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please add at least one menu item.',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final updated = widget.booking.copyWith(
+      date: _selectedDate,
+      type: _isDineIn ? BookingType.dineIn : BookingType.catering,
+      guideName: _guideNameController.text.trim(),
+      guideMobile: _mobileController.text.trim(),
+      companyName: _companyNameController.text.trim(),
+      restaurantId: _selectedRestaurant,
+      assignedManagerId: _assignedManager,
+      members: _members.value,
+      extraDetails: _extraDetailsController.text.trim(),
+      menuItems: List.from(_menuItems),
+      // Only include relevant fields:
+      tableNumber: _isDineIn ? _tableNumberController.text.trim() : null,
+      ratePerPerson: !_isDineIn
+          ? double.tryParse(_ratePerPersonController.text.trim())
+          : null,
+    );
+
+    final bookingService = BookingService();
+    await bookingService.updateBooking(updated);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      SnackbarHelper.show(
+        context,
+        message: 'Booking updated successfully!',
+        type: MessageType.success,
+      );
+      Navigator.pop(context, true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _guideNameController.dispose();
+    _mobileController.dispose();
+    _companyNameController.dispose();
+    _tableNumberController.dispose();
+    _ratePerPersonController.dispose();
+    _extraDetailsController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
-      behavior: HitTestBehavior.translucent,
       child: Stack(
         children: [
           Scaffold(
@@ -187,7 +268,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
                         ),
                         const SizedBox(width: 10),
                         const Text(
-                          "Add Booking",
+                          "Edit Booking",
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -228,43 +309,12 @@ class _AddBookingPageState extends State<AddBookingPage> {
                               _companyNameController,
                               "Company Name (optional)",
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 16),
-                              child: TextFormField(
-                                controller: _extraDetailsController,
-                                maxLines: 4,
-                                decoration: InputDecoration(
-                                  labelText: "Extra Details (optional)",
-                                  alignLabelWithHint: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
+                            _buildExtraDetailsField(),
                             _buildDropdownWithMap(
-                              label: "Restaurant",
-                              options: _restaurantOptions,
-                              selectedId: _selectedRestaurant,
-                              onChanged: (id) {
-                                setState(() {
-                                  _selectedRestaurant = id;
-                                  _assignedManager = null; // clear old manager
-                                });
-                              },
+                              "Restaurant",
+                              _restaurantOptions,
+                              _selectedRestaurant,
+                              (id) => setState(() => _selectedRestaurant = id),
                             ),
                             _buildMembersField(),
                             if (!_isDineIn)
@@ -272,22 +322,13 @@ class _AddBookingPageState extends State<AddBookingPage> {
                                 _ratePerPersonController,
                                 "Rate per Person (CHF)",
                                 type: TextInputType.number,
-                                required: !_isDineIn,
+                                required: true,
                               ),
                             _buildDropdownWithMap(
-                              label: "Assigned Manager",
-                              options: _selectedRestaurant == null
-                                  ? []
-                                  : _managerOptions
-                                        .where(
-                                          (m) =>
-                                              m['restaurantId'] ==
-                                              _selectedRestaurant,
-                                        )
-                                        .toList(),
-                              selectedId: _assignedManager,
-                              onChanged: (id) =>
-                                  setState(() => _assignedManager = id),
+                              "Assigned Manager",
+                              _managerOptions,
+                              _assignedManager,
+                              (id) => setState(() => _assignedManager = id),
                             ),
                             const SizedBox(height: 20),
                             _buildAddMenuButton(),
@@ -346,15 +387,16 @@ class _AddBookingPageState extends State<AddBookingPage> {
       child: Theme(
         data: Theme.of(context).copyWith(
           dialogTheme: const DialogThemeData(
-            backgroundColor: Colors.white, // 👈 White background for modal
+            backgroundColor: Colors.white,
             surfaceTintColor: Colors.white,
           ),
           colorScheme: Theme.of(context).colorScheme.copyWith(
             surface: Colors.white,
-            primary: AppColors.primary, // Optional: for pink accent
+            primary: AppColors.primary,
           ),
         ),
         child: IntlPhoneField(
+          initialValue: _mobileController.text,
           decoration: InputDecoration(
             labelText: 'Guide Mobile Number',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -375,12 +417,35 @@ class _AddBookingPageState extends State<AddBookingPage> {
     );
   }
 
-  Widget _buildDropdownWithMap({
-    required String label,
-    required List<Map<String, dynamic>> options,
-    required String? selectedId,
-    required Function(String) onChanged,
-  }) {
+  Widget _buildExtraDetailsField() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: TextFormField(
+        controller: _extraDetailsController,
+        maxLines: 4,
+        decoration: InputDecoration(
+          labelText: "Extra Details (optional)",
+          alignLabelWithHint: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade500),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownWithMap(
+    String label,
+    List<Map<String, dynamic>> options,
+    String? selectedId,
+    Function(String) onChanged,
+  ) {
     final selectedItem = options.firstWhere(
       (opt) => opt['id'] == selectedId,
       orElse: () => {},
@@ -485,12 +550,38 @@ class _AddBookingPageState extends State<AddBookingPage> {
               onTap: () {
                 Navigator.pop(context);
                 onSelected(item['id']);
+                if (label == 'Restaurant') {
+                  _filterManagersByRestaurant(item['id']);
+                }
               },
             );
           },
         );
       },
     );
+  }
+
+  void _filterManagersByRestaurant(String restaurantId) async {
+    try {
+      final managerSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'manager')
+          .where('restaurantId', isEqualTo: restaurantId)
+          .get();
+
+      setState(() {
+        _managerOptions = managerSnap.docs
+            .map((e) => {'id': e.id, 'email': e['email'] ?? ''})
+            .toList();
+        _assignedManager = null; // Reset manager selection
+      });
+    } catch (e) {
+      SnackbarHelper.show(
+        context,
+        message: 'Error loading managers',
+        type: MessageType.error,
+      );
+    }
   }
 
   Widget _buildDateField() {
@@ -530,16 +621,18 @@ class _AddBookingPageState extends State<AddBookingPage> {
       ),
       child: Row(
         children: [
-          _buildToggleChip(
-            "Dine In",
-            _isDineIn,
-            () => setState(() => _isDineIn = true),
-          ),
-          _buildToggleChip(
-            "Catering",
-            !_isDineIn,
-            () => setState(() => _isDineIn = false),
-          ),
+          _buildToggleChip("Dine In", _isDineIn, () {
+            setState(() {
+              _isDineIn = true;
+              _ratePerPersonController.clear(); // clear rate
+            });
+          }),
+          _buildToggleChip("Catering", !_isDineIn, () {
+            setState(() {
+              _isDineIn = false;
+              _tableNumberController.clear(); // clear table number
+            });
+          }),
         ],
       ),
     );
@@ -558,7 +651,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
           child: Center(
             child: Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.black,
                 fontWeight: FontWeight.w500,
               ),
@@ -704,100 +797,19 @@ class _AddBookingPageState extends State<AddBookingPage> {
 
   Widget _buildConfirmButton() {
     return ElevatedButton(
-      onPressed: () async {
-        if (_selectedDate == null) {
-          SnackbarHelper.show(
-            context,
-            message: 'Please select a booking date.',
-            type: MessageType.warning,
-          );
-          return;
-        }
-
-        if (_menuItems.isEmpty) {
-          SnackbarHelper.show(
-            context,
-            message: 'Please add at least one menu item.',
-            type: MessageType.warning,
-          );
-          return;
-        }
-
-        if (_selectedRestaurant == null) {
-          SnackbarHelper.show(
-            context,
-            message: 'Please select a restaurant.',
-            type: MessageType.warning,
-          );
-          return;
-        }
-
-        if (_assignedManager == null) {
-          SnackbarHelper.show(
-            context,
-            message: 'Please assign a manager.',
-            type: MessageType.warning,
-          );
-          return;
-        }
-
-        if (!_isDineIn) {
-          final rate = double.tryParse(_ratePerPersonController.text.trim());
-          if (rate == null || rate <= 0) {
-            SnackbarHelper.show(
-              context,
-              message: 'Enter valid rate per person.',
-              type: MessageType.warning,
-            );
-            return;
-          }
-        }
-
-        if (_formKey.currentState?.validate() ?? false) {
-          setState(() => _isLoading = true);
-
-          final newBooking = BookingModel(
-            id: '',
-            date: _selectedDate!,
-            type: _isDineIn ? BookingType.dineIn : BookingType.catering,
-            tableNumber: _isDineIn ? _tableNumberController.text.trim() : null,
-            guideName: _guideNameController.text.trim(),
-            guideMobile: _mobileController.text.trim(),
-            extraDetails: _extraDetailsController.text.trim(),
-            companyName: _companyNameController.text.trim(),
-            restaurantId: _selectedRestaurant!,
-            assignedManagerId: _assignedManager!,
-            members: _members.value,
-            ratePerPerson: !_isDineIn
-                ? double.tryParse(_ratePerPersonController.text.trim()) ?? 0.0
-                : null,
-            menuItems: _menuItems,
-            isClosed: false,
-          );
-
-          final bookingService = BookingService();
-          await bookingService.createBooking(newBooking);
-
-          if (context.mounted) {
-            setState(() => _isLoading = false);
-            SnackbarHelper.show(
-              context,
-              message: 'Booking created successfully!',
-              type: MessageType.success,
-            );
-            Navigator.pop(context, true);
-          }
-        }
-      },
+      onPressed: _saveBooking,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      child: const Text("Confirm"),
+      child: const Text("Save Changes"),
     );
   }
+
+  // The _buildX helper methods follow the same as AddBookingPage
+  // You can copy or modularize them based on your existing file.
 }
 
 class _AddMenuItemModal extends StatefulWidget {
@@ -818,7 +830,6 @@ class _AddMenuItemModalState extends State<_AddMenuItemModal> {
   @override
   void initState() {
     super.initState();
-
     final item = widget.initialItem;
     if (item != null) {
       _nameController.text = item.name;

@@ -1,3 +1,4 @@
+import 'package:booking_management_app/core/utils/constants.dart';
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
@@ -17,7 +18,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Cinnamon Garden Booking',
+      navigatorObservers: [routeObserver],
+      title: 'CinnaOps',
       theme: appTheme,
       debugShowCheckedModeBanner: false,
       home: const LoginScreen(),

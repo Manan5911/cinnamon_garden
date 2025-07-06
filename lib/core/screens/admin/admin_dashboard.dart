@@ -603,7 +603,6 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                     _selectedStatuses =
                                                         statuses ?? [];
 
-                                                    // count badge
                                                     int count = 0;
                                                     if (_selectedRestaurantIds
                                                         .isNotEmpty)
@@ -620,7 +619,6 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                     _activeFilterCount = count;
                                                   });
 
-                                                  // ✅ Apply filter on visible bookings
                                                   ref
                                                       .read(
                                                         bookingFilterControllerProvider
@@ -643,6 +641,22 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                             )
                                                             .toList(),
                                                       );
+                                                },
+                                                onClear: () {
+                                                  setState(() {
+                                                    _selectedRestaurantIds = [];
+                                                    _selectedManagerIds = [];
+                                                    _selectedTypes = [];
+                                                    _selectedStatuses = [];
+                                                    _activeFilterCount = 0;
+                                                  });
+
+                                                  ref
+                                                      .read(
+                                                        bookingFilterControllerProvider
+                                                            .notifier,
+                                                      )
+                                                      .resetFilters();
                                                 },
                                               ),
                                             );
@@ -1048,6 +1062,7 @@ class _FilterModal extends StatefulWidget {
   final Map<String, String> restaurantMap;
   final Map<String, String> managerMap;
   final void Function(Map<String, dynamic>) onApply;
+  final VoidCallback onClear;
 
   final List<String> initialRestaurants;
   final List<String> initialManagers;
@@ -1058,6 +1073,7 @@ class _FilterModal extends StatefulWidget {
     required this.restaurantMap,
     required this.managerMap,
     required this.onApply,
+    required this.onClear,
     this.initialRestaurants = const [],
     this.initialManagers = const [],
     this.initialTypes = const [],
@@ -1157,6 +1173,30 @@ class _FilterModalState extends State<_FilterModal> {
                     ),
                   ),
                   child: const Text('Apply Filter'),
+                ),
+              ),
+              SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedRestaurants = [];
+                      selectedManagers = [];
+                      selectedTypes = [];
+                      selectedStatuses = [];
+                    });
+                    widget.onClear(); // notify parent to reset filters
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.lightBlue.shade100,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Clear Filters'),
                 ),
               ),
             ],

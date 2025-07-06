@@ -160,7 +160,7 @@ class BookingFilterController
     state = AsyncValue.data(filtered);
   }
 
-  void resetFilter() {
+  void resetFilters() {
     selectedRange = null;
     isFiltering = false;
 

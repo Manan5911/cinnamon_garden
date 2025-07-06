@@ -5,6 +5,7 @@ import 'package:booking_management_app/core/screens/common/role_router.dart';
 import 'package:booking_management_app/core/screens/kitchen/kitchen_dashboard.dart';
 import 'package:booking_management_app/core/screens/manager/manager_dashboard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,6 +51,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onSuccess: (role) async {
               if (!mounted) return;
 
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt(
+                'loginTime',
+                DateTime.now().millisecondsSinceEpoch,
+              );
               // Redirect based on role
               if (role == 'admin') {
                 await Navigator.pushReplacement(
@@ -85,10 +91,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               }
             },
           );
-      final user = FirebaseAuth.instance.currentUser;
-      final token = await user?.getIdTokenResult();
-      print("ROLE: ${token?.claims?['role']}");
-      print("RESTAURANT ID: ${token?.claims?['restaurantId']}");
     } catch (e) {
       final cleaned = e.toString().replaceFirst('Exception: ', '');
       setState(() => _errorMessage = cleaned);

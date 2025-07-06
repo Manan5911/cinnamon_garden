@@ -16,6 +16,10 @@ class BookingFilterController
     extends StateNotifier<AsyncValue<List<BookingModel>>> {
   final Ref ref;
   List<BookingModel> _allBookings = [];
+  List<String>? _selectedRestaurantIds;
+  List<String>? _selectedManagerIds;
+  List<String>? _selectedTypes;
+  List<String>? _selectedStatuses;
 
   BookingFilterController(this.ref) : super(const AsyncValue.loading()) {
     // loadAllBookings();
@@ -62,26 +66,95 @@ class BookingFilterController
   void filterByDateRange(DateTimeRange range) {
     selectedRange = range;
     isFiltering = true;
+    _applyCombinedFilters();
+  }
 
-    final start = DateTime(
-      range.start.year,
-      range.start.month,
-      range.start.day,
-    );
-    final end = DateTime(
-      range.end.year,
-      range.end.month,
-      range.end.day,
-      23,
-      59,
-      59,
-    );
+  void applyCustomFilters({
+    List<String>? restaurantIds,
+    List<String>? managerIds,
+    List<String>? types,
+    List<String>? statuses,
+  }) {
+    _selectedRestaurantIds = restaurantIds;
+    _selectedManagerIds = managerIds;
+    _selectedTypes = types;
+    _selectedStatuses = statuses;
+    _applyCombinedFilters();
+  }
 
-    final filtered = _allBookings.where((b) {
-      final bookingDate = DateTime(b.date.year, b.date.month, b.date.day);
-      return (bookingDate.isAtSameMomentAs(start) ||
-          bookingDate.isAtSameMomentAs(end) ||
-          (bookingDate.isAfter(start) && bookingDate.isBefore(end)));
+  void _applyCombinedFilters() {
+    if (_allBookings.isEmpty) return;
+
+    final start = selectedRange != null
+        ? DateTime(
+            selectedRange!.start.year,
+            selectedRange!.start.month,
+            selectedRange!.start.day,
+          )
+        : null;
+
+    final end = selectedRange != null
+        ? DateTime(
+            selectedRange!.end.year,
+            selectedRange!.end.month,
+            selectedRange!.end.day,
+            23,
+            59,
+            59,
+          )
+        : null;
+
+    print(_selectedTypes);
+    print(_selectedStatuses);
+    final normalizedTypes = _selectedTypes?.map((type) {
+      switch (type.toLowerCase()) {
+        case 'dinein':
+          return 'dineIn';
+        case 'catering':
+          return 'catering';
+        default:
+          return type;
+      }
+    }).toList();
+
+    final filtered = _allBookings.where((booking) {
+      final bookingDate = DateTime(
+        booking.date.year,
+        booking.date.month,
+        booking.date.day,
+      );
+
+      final matchesDate =
+          selectedRange == null ||
+          bookingDate.isAtSameMomentAs(start!) ||
+          bookingDate.isAtSameMomentAs(end!) ||
+          (bookingDate.isAfter(start!) && bookingDate.isBefore(end!));
+
+      final matchesRestaurant =
+          _selectedRestaurantIds == null ||
+          _selectedRestaurantIds!.isEmpty ||
+          _selectedRestaurantIds!.contains(booking.restaurantId);
+
+      final matchesManager =
+          _selectedManagerIds == null ||
+          _selectedManagerIds!.isEmpty ||
+          _selectedManagerIds!.contains(booking.assignedManagerId);
+
+      final matchesType =
+          normalizedTypes == null ||
+          normalizedTypes.isEmpty ||
+          normalizedTypes.contains(booking.type.name);
+
+      final matchesStatus =
+          _selectedStatuses == null ||
+          _selectedStatuses!.isEmpty ||
+          _selectedStatuses!.contains(booking.isClosed ? 'closed' : 'open');
+
+      return matchesDate &&
+          matchesRestaurant &&
+          matchesManager &&
+          matchesType &&
+          matchesStatus;
     }).toList();
 
     state = AsyncValue.data(filtered);

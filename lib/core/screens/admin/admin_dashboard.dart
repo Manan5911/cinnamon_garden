@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/screens/admin/add_booking_page.dart';
 import 'package:booking_management_app/core/screens/admin/controllers/booking_filter_controller.dart';
@@ -28,11 +30,14 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
+  bool _showSidebar = false;
+  bool _loginSnackbarShown = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.showLoginSuccess) {
+    if (widget.showLoginSuccess && !_loginSnackbarShown) {
+      _loginSnackbarShown = true; // ✅ ensure only once
       WidgetsBinding.instance.addPostFrameCallback((_) {
         SnackbarHelper.show(
           context,
@@ -43,29 +48,127 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  final List<Widget> _screens = [
-    const BookingHome(),
-    const KitchenStaffScreen(),
-    const ManagerScreen(),
-    const RestaurantScreen(),
-    const Center(child: Text('More')),
-  ];
+  late List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      BookingHome(
+        onToggleSidebar: () {
+          setState(() {
+            _showSidebar = !_showSidebar;
+          });
+        },
+      ),
+      const KitchenStaffScreen(),
+      const ManagerScreen(),
+      const RestaurantScreen(),
+    ];
+  }
+
+  Widget _sidebarButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color backgroundColor,
+    required Color iconColor,
+    String? tooltip,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.15)),
+          ),
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: iconColor, size: 24),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.secondary,
-      body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          onPageChanged: (index) {
-            setState(() {
-              _currentIndex = index; // update selected tab when swiped
-            });
-          },
-          physics: const BouncingScrollPhysics(),
-          children: _screens,
-        ),
+      drawer: _buildDrawer(context),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() => _currentIndex = index);
+              },
+              physics: const BouncingScrollPhysics(),
+              children: _screens,
+            ),
+          ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            top:
+                MediaQuery.of(context).size.height * 0.2, // You can adjust this
+            left: _showSidebar ? 0 : -100,
+            width: 80,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: _showSidebar ? 1 : 0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Column(
+                      mainAxisSize:
+                          MainAxisSize.min, // ✅ Reduces height to fit content
+                      children: [
+                        _sidebarButton(
+                          icon: Icons.close,
+                          backgroundColor: Colors.white.withOpacity(0.15),
+                          iconColor: Colors.white,
+                          tooltip: "Close",
+                          onTap: () => setState(() => _showSidebar = false),
+                        ),
+                        const SizedBox(height: 16),
+                        _sidebarButton(
+                          icon: Icons.logout,
+                          backgroundColor: Colors.white.withOpacity(0.15),
+                          iconColor: Colors.redAccent,
+                          tooltip: "Logout",
+                          onTap: () async {
+                            setState(() => _showSidebar = false);
+                            await FirebaseAuth.instance.signOut();
+                            if (context.mounted) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -101,7 +204,66 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _customBarItem(Icons.restaurant_menu_outlined, 'Kitchen', 1),
             _customBarItem(Icons.people_outline, 'Managers', 2),
             _customBarItem(Icons.storefront_outlined, 'Restaurants', 3),
-            _customBarItem(Icons.settings_outlined, 'More', 4),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: Text(
+                'Admin Menu',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE0E0E0)),
+
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text(
+                'Logout',
+                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+              ),
+              onTap: () async {
+                Navigator.pop(context); // close drawer
+                await FirebaseAuth.instance.signOut();
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
+            ),
+
+            // Add more items here as needed
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(left: 20, bottom: 20),
+              child: Text(
+                'Version 1.0.0',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+              ),
+            ),
           ],
         ),
       ),
@@ -131,7 +293,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
 }
 
 class BookingHome extends ConsumerStatefulWidget {
-  const BookingHome({super.key});
+  final VoidCallback onToggleSidebar;
+
+  const BookingHome({super.key, required this.onToggleSidebar});
 
   @override
   ConsumerState<BookingHome> createState() => _BookingHomeState();
@@ -142,6 +306,12 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
   bool _isLoading = false;
   Map<String, String> _restaurantMap = {};
   Map<String, String> _managerMap = {};
+  int _activeFilterCount = 0;
+
+  List<String> _selectedRestaurantIds = [];
+  List<String> _selectedManagerIds = [];
+  List<String> _selectedTypes = [];
+  List<String> _selectedStatuses = [];
 
   DateTimeRange _defaultRange() {
     final now = DateTime.now();
@@ -175,8 +345,9 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
     try {
       final controller = ref.read(bookingFilterControllerProvider.notifier);
       await controller.loadAllBookings();
-      if (_selectedRange != null) {
-        print("Called");
+      if (_selectedRange != null &&
+          !(_selectedRange!.start.year == 2000 &&
+              _selectedRange!.end.year == 2100)) {
         controller.filterByDateRange(_selectedRange!);
       }
     } finally {}
@@ -202,7 +373,8 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
           for (var doc in restaurantSnap.docs) doc.id: doc['name'] ?? 'Unknown',
         };
         _managerMap = {
-          for (var doc in userSnap.docs) doc.id: doc['email'] ?? 'N/A',
+          for (var doc in userSnap.docs)
+            if (doc['role'] == 'manager') doc.id: doc['email'] ?? 'N/A',
         };
       });
 
@@ -211,6 +383,23 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
         controller.filterByDateRange(_selectedRange!);
       }
     });
+  }
+
+  Widget _roundedIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE5EC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: Colors.black),
+        onPressed: onTap,
+      ),
+    );
   }
 
   @override
@@ -231,92 +420,7 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                 children: [
                   // Modern Profile Icon with Modal Sheet
                   GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) {
-                          return Container(
-                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(28),
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Drag handle
-                                Center(
-                                  child: Container(
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade300,
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Admin Menu Title (not a tile)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 4),
-                                  child: Text(
-                                    'Admin Menu',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 16),
-
-                                // Divider
-                                const Divider(
-                                  height: 1,
-                                  color: Color(0xFFE0E0E0),
-                                ),
-
-                                // Menu item(s)
-                                ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(
-                                    Icons.logout,
-                                    color: Colors.redAccent,
-                                  ),
-                                  title: const Text(
-                                    'Logout',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  onTap: () async {
-                                    Navigator.pop(context);
-                                    await FirebaseAuth.instance.signOut();
-                                    if (context.mounted) {
-                                      Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => const LoginScreen(),
-                                        ),
-                                        (route) => false,
-                                      );
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
+                    onTap: widget.onToggleSidebar,
                     child: const Icon(
                       Icons.account_circle_outlined,
                       size: 42,
@@ -325,7 +429,6 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                   ),
 
                   const SizedBox(width: 12),
-
                   // Greeting + Date Filter
                   Expanded(
                     child: Column(
@@ -338,11 +441,13 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          _selectedRange == null
-                              ? 'Overview of all bookings'
+                          (_selectedRange == null ||
+                                  (_selectedRange!.start.year == 2000 &&
+                                      _selectedRange!.end.year == 2100))
+                              ? 'Showing all bookings'
                               : _selectedRange!.start == _selectedRange!.end
                               ? 'Showing for ${DateFormat('d MMM yyyy').format(_selectedRange!.start)}'
-                              : 'From ${DateFormat('d MMM').format(_selectedRange!.start)} to ${DateFormat('d MMM yyyy').format(_selectedRange!.end)}',
+                              : 'From ${DateFormat('d MMM yyyy').format(_selectedRange!.start)} to ${DateFormat('d MMM yyyy').format(_selectedRange!.end)}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: Colors.white70),
                         ),
@@ -416,55 +521,165 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFE5EC),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: AppColors.border,
-                                        ),
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(
-                                          Icons.calendar_month,
-                                          color: Colors.black,
-                                        ),
-                                        onPressed: () {
-                                          showModalBottomSheet(
-                                            context: context,
-                                            isScrollControlled: true,
-                                            backgroundColor: Colors.transparent,
-                                            builder: (ctx) =>
-                                                SingleChildScrollView(
-                                                  child: Padding(
-                                                    padding: EdgeInsets.only(
-                                                      bottom: MediaQuery.of(
-                                                        ctx,
-                                                      ).viewInsets.bottom,
-                                                    ),
-                                                    child: _DateRangeModal(
-                                                      initialRange:
-                                                          _selectedRange!,
-                                                      onApply: (range) {
-                                                        setState(
-                                                          () => _selectedRange =
-                                                              range,
-                                                        );
-                                                        controller
-                                                            .filterByDateRange(
-                                                              range,
-                                                            );
-                                                      },
-                                                    ),
+
+                                    // Calendar button
+                                    _roundedIconButton(
+                                      icon: Icons.calendar_month,
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (ctx) =>
+                                              SingleChildScrollView(
+                                                child: Padding(
+                                                  padding: EdgeInsets.only(
+                                                    bottom: MediaQuery.of(
+                                                      ctx,
+                                                    ).viewInsets.bottom,
+                                                  ),
+                                                  child: _DateRangeModal(
+                                                    initialRange:
+                                                        _selectedRange!,
+                                                    onApply: (range) {
+                                                      setState(
+                                                        () => _selectedRange =
+                                                            range,
+                                                      );
+                                                      controller
+                                                          .filterByDateRange(
+                                                            range,
+                                                          );
+                                                    },
                                                   ),
                                                 ),
-                                          );
-                                        },
-                                      ),
+                                              ),
+                                        );
+                                      },
+                                    ),
+
+                                    const SizedBox(width: 8),
+                                    Stack(
+                                      children: [
+                                        _roundedIconButton(
+                                          icon: Icons.filter_alt_outlined,
+                                          onTap: () {
+                                            showModalBottomSheet(
+                                              context: context,
+                                              isScrollControlled: true,
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              builder: (ctx) => _FilterModal(
+                                                restaurantMap: _restaurantMap,
+                                                managerMap: _managerMap,
+                                                initialRestaurants:
+                                                    _selectedRestaurantIds,
+                                                initialManagers:
+                                                    _selectedManagerIds,
+                                                initialTypes: _selectedTypes,
+                                                initialStatuses:
+                                                    _selectedStatuses,
+                                                onApply: (filters) {
+                                                  final restaurantIds =
+                                                      filters['restaurantIds']
+                                                          as List<String>?;
+                                                  final managerIds =
+                                                      filters['managerIds']
+                                                          as List<String>?;
+                                                  final types =
+                                                      filters['types']
+                                                          as List<String>?;
+                                                  final statuses =
+                                                      filters['statuses']
+                                                          as List<String>?;
+
+                                                  setState(() {
+                                                    _selectedRestaurantIds =
+                                                        restaurantIds ?? [];
+                                                    _selectedManagerIds =
+                                                        managerIds ?? [];
+                                                    _selectedTypes =
+                                                        types ?? [];
+                                                    _selectedStatuses =
+                                                        statuses ?? [];
+
+                                                    // count badge
+                                                    int count = 0;
+                                                    if (_selectedRestaurantIds
+                                                        .isNotEmpty)
+                                                      count++;
+                                                    if (_selectedManagerIds
+                                                        .isNotEmpty)
+                                                      count++;
+                                                    if (_selectedTypes
+                                                        .isNotEmpty)
+                                                      count++;
+                                                    if (_selectedStatuses
+                                                        .isNotEmpty)
+                                                      count++;
+                                                    _activeFilterCount = count;
+                                                  });
+
+                                                  // ✅ Apply filter on visible bookings
+                                                  ref
+                                                      .read(
+                                                        bookingFilterControllerProvider
+                                                            .notifier,
+                                                      )
+                                                      .applyCustomFilters(
+                                                        restaurantIds:
+                                                            restaurantIds,
+                                                        managerIds: managerIds,
+                                                        types: types
+                                                            ?.map(
+                                                              (e) => e
+                                                                  .toLowerCase(),
+                                                            )
+                                                            .toList(),
+                                                        statuses: statuses
+                                                            ?.map(
+                                                              (e) => e
+                                                                  .toLowerCase(),
+                                                            )
+                                                            .toList(),
+                                                      );
+                                                },
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        if (_activeFilterCount > 0)
+                                          Positioned(
+                                            right: 4,
+                                            top: 4,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.redAccent,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              constraints: const BoxConstraints(
+                                                minWidth: 20,
+                                                minHeight: 20,
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  '$_activeFilterCount',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
+
                               bookingsAsync.when(
                                 loading: () => const SizedBox(
                                   height: 300,
@@ -764,19 +979,178 @@ class _DateRangeModalState extends State<_DateRangeModal> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_rangeStart != null && _rangeEnd != null)
-                      ? () {
-                          widget.onApply(
-                            DateTimeRange(start: _rangeStart!, end: _rangeEnd!),
-                          );
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: (_rangeStart != null && _rangeEnd != null)
+                            ? () {
+                                widget.onApply(
+                                  DateTimeRange(
+                                    start: _rangeStart!,
+                                    end: _rangeEnd!,
+                                  ),
+                                );
+                                Navigator.pop(context);
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              (_rangeStart != null && _rangeEnd != null)
+                              ? const Color(0xFFFFE5EC)
+                              : Colors.grey,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Apply Filter'),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
                           Navigator.pop(context);
-                        }
-                      : null,
+                          widget.onApply(
+                            DateTimeRange(
+                              start: DateTime(2000),
+                              end: DateTime(2100),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFFD0F0C0,
+                          ), // light green
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Show All Bookings'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterModal extends StatefulWidget {
+  final Map<String, String> restaurantMap;
+  final Map<String, String> managerMap;
+  final void Function(Map<String, dynamic>) onApply;
+
+  final List<String> initialRestaurants;
+  final List<String> initialManagers;
+  final List<String> initialTypes;
+  final List<String> initialStatuses;
+
+  const _FilterModal({
+    required this.restaurantMap,
+    required this.managerMap,
+    required this.onApply,
+    this.initialRestaurants = const [],
+    this.initialManagers = const [],
+    this.initialTypes = const [],
+    this.initialStatuses = const [],
+  });
+
+  @override
+  State<_FilterModal> createState() => _FilterModalState();
+}
+
+class _FilterModalState extends State<_FilterModal> {
+  List<String> selectedRestaurants = [];
+  List<String> selectedManagers = [];
+  List<String> selectedTypes = [];
+  List<String> selectedStatuses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    selectedRestaurants = [...widget.initialRestaurants];
+    selectedManagers = [...widget.initialManagers];
+    selectedTypes = [...widget.initialTypes];
+    selectedStatuses = [...widget.initialStatuses];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Center(
+                child: Text(
+                  'Filter Bookings',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              _modalMultiPicker(
+                label: 'Restaurant',
+                values: selectedRestaurants,
+                options: widget.restaurantMap,
+                onSelect: (vals) => setState(() => selectedRestaurants = vals),
+              ),
+              const SizedBox(height: 16),
+
+              _modalMultiPicker(
+                label: 'Manager',
+                values: selectedManagers,
+                options: widget.managerMap,
+                onSelect: (vals) => setState(() => selectedManagers = vals),
+              ),
+              const SizedBox(height: 16),
+
+              _modalMultiPicker(
+                label: 'Booking Type',
+                values: selectedTypes,
+                options: {'dineIn': 'Dine In', 'catering': 'Catering'},
+                onSelect: (vals) => setState(() => selectedTypes = vals),
+              ),
+              const SizedBox(height: 16),
+
+              _modalMultiPicker(
+                label: 'Booking Status',
+                values: selectedStatuses,
+                options: {'open': 'Open', 'closed': 'Closed'},
+                onSelect: (vals) => setState(() => selectedStatuses = vals),
+              ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    widget.onApply({
+                      'restaurantIds': selectedRestaurants,
+                      'managerIds': selectedManagers,
+                      'types': selectedTypes,
+                      'statuses': selectedStatuses,
+                    });
+                    Navigator.pop(context);
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: (_rangeStart != null && _rangeEnd != null)
-                        ? const Color(0xFFFFE5EC)
-                        : Colors.grey,
+                    backgroundColor: const Color(0xFFFFE5EC),
                     foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -787,6 +1161,249 @@ class _DateRangeModalState extends State<_DateRangeModal> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modalMultiPicker({
+    required String label,
+    required List<String> values,
+    required Map<String, String> options,
+    required void Function(List<String>) onSelect,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () async {
+            final selected = await showModalBottomSheet<List<String>>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (_) => _MultiSelectBottomPicker(
+                title: label,
+                options: options,
+                selectedValues: values,
+              ),
+            );
+            if (selected != null) onSelect(selected);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    values.isEmpty
+                        ? 'Select $label'
+                        : values.map((v) => options[v]).join(', '),
+                    style: const TextStyle(fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down),
+              ],
+            ),
+          ),
+        ),
+        if (values.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: TextButton(
+              onPressed: () => onSelect([]),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(40, 28),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                backgroundColor: Colors.grey.shade200,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Clear', style: TextStyle(fontSize: 12)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MultiSelectBottomPicker extends StatefulWidget {
+  final String title;
+  final Map<String, String> options;
+  final List<String> selectedValues;
+
+  const _MultiSelectBottomPicker({
+    required this.title,
+    required this.options,
+    required this.selectedValues,
+  });
+
+  @override
+  State<_MultiSelectBottomPicker> createState() =>
+      _MultiSelectBottomPickerState();
+}
+
+class _MultiSelectBottomPickerState extends State<_MultiSelectBottomPicker> {
+  late List<String> selected;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = [...widget.selectedValues];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 15, 10, 10),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Select ${widget.title}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            ...widget.options.entries.map(
+              (e) => Column(
+                children: [
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      unselectedWidgetColor: Colors.grey,
+                      checkboxTheme: CheckboxThemeData(
+                        checkColor: MaterialStateProperty.all(
+                          Colors.black,
+                        ), // white tick
+                        fillColor: MaterialStateProperty.all(
+                          Colors.white,
+                        ), // box color
+                      ),
+                    ),
+                    child: CheckboxListTile(
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: selected.contains(e.key),
+                      title: Text(
+                        e.value,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      onChanged: (checked) {
+                        setState(() {
+                          checked!
+                              ? selected.add(e.key)
+                              : selected.remove(e.key);
+                        });
+                      },
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, selected),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.pinkThemed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text('Apply'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomPicker extends StatelessWidget {
+  final String title;
+  final Map<String, String> options;
+  final String? selectedValue;
+
+  const _BottomPicker({
+    required this.title,
+    required this.options,
+    this.selectedValue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = options.entries.toList();
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 15, 10, 0),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Text(
+                'Select $title',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: entries.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, index) {
+                final entry = entries[index];
+                return ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  visualDensity: const VisualDensity(vertical: -2),
+                  title: Text(
+                    entry.value,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  trailing: selectedValue == entry.key
+                      ? const Icon(Icons.check, color: Colors.pinkAccent)
+                      : null,
+                  onTap: () => Navigator.pop(context, entry.key),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );

@@ -18,6 +18,8 @@ import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AdminDashboard extends StatefulWidget {
   final bool showLoginSuccess;
@@ -353,12 +355,73 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
     } finally {}
   }
 
+  Future<void> _loadSavedFilters() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final rangeStart = prefs.getString('filter_start');
+    final rangeEnd = prefs.getString('filter_end');
+
+    if (rangeStart != null && rangeEnd != null) {
+      _selectedRange = DateTimeRange(
+        start: DateTime.parse(rangeStart),
+        end: DateTime.parse(rangeEnd),
+      );
+    }
+
+    _selectedRestaurantIds = (prefs.getStringList('filter_restaurants') ?? []);
+    _selectedManagerIds = (prefs.getStringList('filter_managers') ?? []);
+    _selectedTypes = (prefs.getStringList('filter_types') ?? []);
+    _selectedStatuses = (prefs.getStringList('filter_statuses') ?? []);
+  }
+
+  Future<void> _saveFiltersToPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (_selectedRange != null) {
+      await prefs.setString(
+        'filter_start',
+        _selectedRange!.start.toIso8601String(),
+      );
+      await prefs.setString(
+        'filter_end',
+        _selectedRange!.end.toIso8601String(),
+      );
+    }
+
+    await prefs.setStringList('filter_restaurants', _selectedRestaurantIds);
+    await prefs.setStringList('filter_managers', _selectedManagerIds);
+    await prefs.setStringList('filter_types', _selectedTypes);
+    await prefs.setStringList('filter_statuses', _selectedStatuses);
+  }
+
+  Future<void> _clearSavedFilters() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('filter_start');
+    await prefs.remove('filter_end');
+    await prefs.remove('filter_restaurants');
+    await prefs.remove('filter_managers');
+    await prefs.remove('filter_types');
+    await prefs.remove('filter_statuses');
+  }
+
   @override
   void initState() {
     super.initState();
-    _selectedRange = _defaultRange();
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadSavedFilters();
+
+      if (_selectedRange == null) {
+        _selectedRange = _defaultRange();
+      }
+
+      setState(() {
+        _activeFilterCount = 0;
+        if (_selectedRestaurantIds.isNotEmpty) _activeFilterCount++;
+        if (_selectedManagerIds.isNotEmpty) _activeFilterCount++;
+        if (_selectedTypes.isNotEmpty) _activeFilterCount++;
+        if (_selectedStatuses.isNotEmpty) _activeFilterCount++;
+      });
+
       final controller = ref.read(bookingFilterControllerProvider.notifier);
 
       final restaurantSnap = await FirebaseFirestore.instance
@@ -381,6 +444,18 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
       await controller.loadAllBookings();
       if (_selectedRange != null) {
         controller.filterByDateRange(_selectedRange!);
+      }
+
+      if (_selectedRestaurantIds.isNotEmpty ||
+          _selectedManagerIds.isNotEmpty ||
+          _selectedTypes.isNotEmpty ||
+          _selectedStatuses.isNotEmpty) {
+        controller.applyCustomFilters(
+          restaurantIds: _selectedRestaurantIds,
+          managerIds: _selectedManagerIds,
+          types: _selectedTypes.map((e) => e.toLowerCase()).toList(),
+          statuses: _selectedStatuses.map((e) => e.toLowerCase()).toList(),
+        );
       }
     });
   }
@@ -546,6 +621,7 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                         () => _selectedRange =
                                                             range,
                                                       );
+                                                      _saveFiltersToPrefs();
                                                       controller
                                                           .filterByDateRange(
                                                             range,
@@ -619,6 +695,8 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                     _activeFilterCount = count;
                                                   });
 
+                                                  _saveFiltersToPrefs();
+
                                                   ref
                                                       .read(
                                                         bookingFilterControllerProvider
@@ -648,8 +726,12 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                     _selectedManagerIds = [];
                                                     _selectedTypes = [];
                                                     _selectedStatuses = [];
+                                                    _selectedRange =
+                                                        _defaultRange();
                                                     _activeFilterCount = 0;
                                                   });
+
+                                                  _clearSavedFilters();
 
                                                   ref
                                                       .read(
@@ -657,6 +739,14 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                                                             .notifier,
                                                       )
                                                       .resetFilters();
+                                                  ref
+                                                      .read(
+                                                        bookingFilterControllerProvider
+                                                            .notifier,
+                                                      )
+                                                      .filterByDateRange(
+                                                        _selectedRange!,
+                                                      );
                                                 },
                                               ),
                                             );

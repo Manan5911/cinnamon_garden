@@ -511,91 +511,99 @@ class _ManagerScreenState extends State<ManagerScreen> {
                           ? const Center(child: CircularProgressIndicator())
                           : _managers.isEmpty
                           ? const Center(child: Text('No managers found'))
-                          : ListView.separated(
-                              itemCount: _managers.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (_, index) {
-                                final manager = _managers[index];
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: AppColors.border),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x14000000),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            manager.email,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                              color: AppColors.text,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Restaurant: ${_restaurantNameById[manager.restaurantId] ?? "-"}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                size: 18,
-                                                color: AppColors.primary,
-                                              ),
-                                              onPressed: () =>
-                                                  _showManagerModal(
-                                                    existing: manager,
-                                                  ),
-                                              tooltip: 'Edit',
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                                size: 18,
-                                                color: AppColors.primary,
-                                              ),
-                                              onPressed: () =>
-                                                  _confirmDelete(manager),
-                                              tooltip: 'Delete',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                setState(() => _isLoading = true);
+                                await _loadManagers();
                               },
+                              child: ListView.separated(
+                                itemCount: _managers.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (_, index) {
+                                  final manager = _managers[index];
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x14000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              manager.email,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                                color: AppColors.text,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Restaurant: ${_restaurantNameById[manager.restaurantId] ?? "-"}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.edit,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _showManagerModal(
+                                                      existing: manager,
+                                                    ),
+                                                tooltip: 'Edit',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _confirmDelete(manager),
+                                                tooltip: 'Delete',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ),

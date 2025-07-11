@@ -7,22 +7,7 @@ class BookingService {
   /// 🔹 Create new booking
   Future<void> createBooking(BookingModel booking) async {
     final docRef = _bookingCollection.doc(); // Generate doc ID
-    final bookingWithId = BookingModel(
-      id: docRef.id,
-      type: booking.type,
-      date: booking.date,
-      members: booking.members,
-      restaurantId: booking.restaurantId,
-      tableNumber: booking.tableNumber,
-      extraDetails: booking.extraDetails,
-      guideName: booking.guideName,
-      guideMobile: booking.guideMobile,
-      companyName: booking.companyName,
-      assignedManagerId: booking.assignedManagerId,
-      menuItems: booking.menuItems,
-      ratePerPerson: booking.ratePerPerson,
-      isClosed: booking.isClosed,
-    );
+    final bookingWithId = booking.copyWith(id: docRef.id);
 
     await docRef.set(bookingWithId.toMap());
   }
@@ -31,6 +16,7 @@ class BookingService {
   Future<void> updateBooking(BookingModel booking) async {
     final data = booking.toMap();
 
+    // Clean up fields not needed for the current booking type
     if (booking.type == BookingType.catering) {
       data['tableNumber'] = FieldValue.delete();
     } else if (booking.type == BookingType.dineIn) {

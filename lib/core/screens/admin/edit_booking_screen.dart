@@ -3,6 +3,7 @@
 
 import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/models/menu_item_model.dart';
+import 'package:booking_management_app/core/models/serving_staff_model.dart';
 import 'package:booking_management_app/core/services/booking_service.dart';
 import 'package:booking_management_app/core/theme/app_colors.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
@@ -44,6 +45,8 @@ class _EditBookingPageState extends State<EditBookingPage> {
   List<MenuItemModel> get _menuItems =>
       _isDineIn ? _dineInItems : _cateringItems;
 
+  List<ServingStaffModel>? _servingStaff = [];
+
   @override
   void initState() {
     super.initState();
@@ -66,7 +69,168 @@ class _EditBookingPageState extends State<EditBookingPage> {
     }
     _selectedRestaurant = b.restaurantId;
     _assignedManager = b.assignedManagerId;
+    _servingStaff = List.from(b.servingStaff ?? []);
+
     _fetchDropdownData();
+  }
+
+  void _openServingStaffModal({ServingStaffModel? existingStaff, int? index}) {
+    final nameController = TextEditingController(
+      text: existingStaff?.name ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: existingStaff?.phoneNumber ?? '',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Add Serving Staff",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: "Name"),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: "Phone Number"),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final newStaff = ServingStaffModel(
+                      name: nameController.text.trim(),
+                      phoneNumber: phoneController.text.trim(),
+                    );
+                    setState(() {
+                      if (index != null) {
+                        _servingStaff?[index] = newStaff;
+                      } else {
+                        _servingStaff?.add(newStaff);
+                      }
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.pinkThemed,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("Save"),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAddStaffButton() {
+    return ElevatedButton.icon(
+      onPressed: _openServingStaffModal,
+      icon: const Icon(Icons.add),
+      label: const Text("Add Serving Staff"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.pinkThemed,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildServingStaffList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Serving Staff:"),
+        const SizedBox(height: 8),
+        ..._servingStaff!.map(
+          (staff) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text("${staff.name} (${staff.phoneNumber})")),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        final index = _servingStaff?.indexOf(staff);
+                        _openServingStaffModal(
+                          existingStaff: staff,
+                          index: index,
+                        );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        final index = _servingStaff?.indexOf(staff);
+                        if (index != null && index >= 0) {
+                          setState(() {
+                            _servingStaff!.removeAt(index);
+                            _servingStaff = List.from(
+                              _servingStaff!,
+                            ); // force state update
+                          });
+                        }
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.delete,
+                          size: 20,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _fetchDropdownData() async {
@@ -79,6 +243,12 @@ class _EditBookingPageState extends State<EditBookingPage> {
           .where('role', isEqualTo: 'manager')
           .get();
 
+      if (!mounted) return;
+
+      final fetchedManagers = managerSnap.docs
+          .map((e) => {'id': e.id, 'email': e['email'] ?? ''})
+          .toList();
+
       setState(() {
         _restaurantOptions = restaurantSnap.docs
             .map(
@@ -90,11 +260,14 @@ class _EditBookingPageState extends State<EditBookingPage> {
             )
             .toList();
 
-        _managerOptions = managerSnap.docs
-            .map((e) => {'id': e.id, 'email': e['email'] ?? ''})
-            .toList();
+        _managerOptions = fetchedManagers;
+
+        // Check if assignedManager still exists in the fetched list
+        final exists = fetchedManagers.any((m) => m['id'] == _assignedManager);
+        if (!exists) _assignedManager = null;
       });
     } catch (e) {
+      if (!mounted) return;
       SnackbarHelper.show(
         context,
         message: 'Error loading dropdowns',
@@ -166,13 +339,55 @@ class _EditBookingPageState extends State<EditBookingPage> {
   }
 
   Future<void> _saveBooking() async {
-    if (_formKey.currentState?.validate() != true) return;
-    if (_selectedDate == null ||
-        _selectedRestaurant == null ||
-        _assignedManager == null) {
+    if (_selectedDate == null) {
       SnackbarHelper.show(
         context,
-        message: 'Please complete all required fields.',
+        message: 'Please select a booking date.',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_guideNameController.text.trim().isEmpty) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please enter guide name',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_mobileController.text.trim().isEmpty) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please enter mobile number',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_menuItems.isEmpty) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please add at least one menu item.',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_selectedRestaurant == null) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please select a restaurant.',
+        type: MessageType.warning,
+      );
+      return;
+    }
+
+    if (_assignedManager == null) {
+      SnackbarHelper.show(
+        context,
+        message: 'Please assign a manager.',
         type: MessageType.warning,
       );
       return;
@@ -184,15 +399,6 @@ class _EditBookingPageState extends State<EditBookingPage> {
       SnackbarHelper.show(
         context,
         message: 'Enter valid rate per person',
-        type: MessageType.warning,
-      );
-      return;
-    }
-
-    if (_menuItems.isEmpty) {
-      SnackbarHelper.show(
-        context,
-        message: 'Please add at least one menu item.',
         type: MessageType.warning,
       );
       return;
@@ -216,6 +422,7 @@ class _EditBookingPageState extends State<EditBookingPage> {
       ratePerPerson: !_isDineIn
           ? double.tryParse(_ratePerPersonController.text.trim())
           : null,
+      servingStaff: _servingStaff ?? [],
     );
 
     final bookingService = BookingService();
@@ -297,13 +504,9 @@ class _EditBookingPageState extends State<EditBookingPage> {
                             if (_isDineIn)
                               _buildTextField(
                                 _tableNumberController,
-                                "Table Number (optional)",
+                                "Section/Location (optional)",
                               ),
-                            _buildTextField(
-                              _guideNameController,
-                              "Guide Name",
-                              required: true,
-                            ),
+                            _buildTextField(_guideNameController, "Guide Name"),
                             _buildPhoneField(),
                             _buildTextField(
                               _companyNameController,
@@ -322,7 +525,6 @@ class _EditBookingPageState extends State<EditBookingPage> {
                                 _ratePerPersonController,
                                 "Rate per Person (CHF)",
                                 type: TextInputType.number,
-                                required: true,
                               ),
                             _buildDropdownWithMap(
                               "Assigned Manager",
@@ -331,9 +533,14 @@ class _EditBookingPageState extends State<EditBookingPage> {
                               (id) => setState(() => _assignedManager = id),
                             ),
                             const SizedBox(height: 20),
-                            _buildAddMenuButton(),
-                            const SizedBox(height: 10),
                             if (_menuItems.isNotEmpty) _buildMenuList(),
+                            const SizedBox(height: 10),
+                            _buildAddMenuButton(),
+                            const SizedBox(height: 15),
+                            if (_servingStaff!.isNotEmpty)
+                              _buildServingStaffList(),
+                            const SizedBox(height: 12),
+                            _buildAddStaffButton(),
                             const SizedBox(height: 30),
                             _buildConfirmButton(),
                           ],
@@ -354,7 +561,6 @@ class _EditBookingPageState extends State<EditBookingPage> {
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
-    bool required = false,
     TextInputType type = TextInputType.text,
   }) {
     return Padding(
@@ -374,9 +580,6 @@ class _EditBookingPageState extends State<EditBookingPage> {
             borderSide: BorderSide(color: Colors.grey.shade500),
           ),
         ),
-        validator: required
-            ? (val) => val == null || val.isEmpty ? 'Required' : null
-            : null,
       ),
     );
   }
@@ -384,34 +587,20 @@ class _EditBookingPageState extends State<EditBookingPage> {
   Widget _buildPhoneField() {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dialogTheme: const DialogThemeData(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
+      child: TextFormField(
+        controller: _mobileController,
+        keyboardType: TextInputType.phone,
+        decoration: InputDecoration(
+          labelText: 'Guide Mobile Number',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
           ),
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-            surface: Colors.white,
-            primary: AppColors.primary,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade500),
           ),
-        ),
-        child: IntlPhoneField(
-          initialValue: _mobileController.text,
-          decoration: InputDecoration(
-            labelText: 'Guide Mobile Number',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade500),
-            ),
-          ),
-          initialCountryCode: 'IN',
-          flagsButtonMargin: const EdgeInsets.only(right: 8),
-          onChanged: (phone) => _mobileController.text = phone.completeNumber,
         ),
       ),
     );

@@ -560,285 +560,302 @@ class _BookingHomeState extends ConsumerState<BookingHome> with RouteAware {
                 onRefresh: refreshBookings,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(32),
-                            ),
+                    return ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(20),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildStatBox(
-                                        title: 'Open',
-                                        value:
-                                            '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _buildStatBox(
-                                        title: 'Closed',
-                                        value:
-                                            '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-
-                                    // Calendar button
-                                    _roundedIconButton(
-                                      icon: Icons.calendar_month,
-                                      onTap: () {
-                                        showModalBottomSheet(
-                                          context: context,
-                                          isScrollControlled: true,
-                                          backgroundColor: Colors.transparent,
-                                          builder: (ctx) =>
-                                              SingleChildScrollView(
-                                                child: Padding(
-                                                  padding: EdgeInsets.only(
-                                                    bottom: MediaQuery.of(
-                                                      ctx,
-                                                    ).viewInsets.bottom,
-                                                  ),
-                                                  child: _DateRangeModal(
-                                                    initialRange:
-                                                        _selectedRange!,
-                                                    onApply: (range) {
-                                                      setState(
-                                                        () => _selectedRange =
-                                                            range,
-                                                      );
-                                                      _saveFiltersToPrefs();
-                                                      controller
-                                                          .filterByDateRange(
-                                                            range,
-                                                          );
-                                                    },
-                                                  ),
-                                                ),
-                                              ),
-                                        );
-                                      },
-                                    ),
-
-                                    const SizedBox(width: 8),
-                                    Stack(
-                                      children: [
-                                        _roundedIconButton(
-                                          icon: Icons.filter_alt_outlined,
-                                          onTap: () {
-                                            showModalBottomSheet(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              backgroundColor:
-                                                  Colors.transparent,
-                                              builder: (ctx) => _FilterModal(
-                                                restaurantMap: _restaurantMap,
-                                                managerMap: _managerMap,
-                                                initialRestaurants:
-                                                    _selectedRestaurantIds,
-                                                initialManagers:
-                                                    _selectedManagerIds,
-                                                initialTypes: _selectedTypes,
-                                                initialStatuses:
-                                                    _selectedStatuses,
-                                                onApply: (filters) {
-                                                  final restaurantIds =
-                                                      filters['restaurantIds']
-                                                          as List<String>?;
-                                                  final managerIds =
-                                                      filters['managerIds']
-                                                          as List<String>?;
-                                                  final types =
-                                                      filters['types']
-                                                          as List<String>?;
-                                                  final statuses =
-                                                      filters['statuses']
-                                                          as List<String>?;
-
-                                                  setState(() {
-                                                    _selectedRestaurantIds =
-                                                        restaurantIds ?? [];
-                                                    _selectedManagerIds =
-                                                        managerIds ?? [];
-                                                    _selectedTypes =
-                                                        types ?? [];
-                                                    _selectedStatuses =
-                                                        statuses ?? [];
-
-                                                    int count = 0;
-                                                    if (_selectedRestaurantIds
-                                                        .isNotEmpty)
-                                                      count++;
-                                                    if (_selectedManagerIds
-                                                        .isNotEmpty)
-                                                      count++;
-                                                    if (_selectedTypes
-                                                        .isNotEmpty)
-                                                      count++;
-                                                    if (_selectedStatuses
-                                                        .isNotEmpty)
-                                                      count++;
-                                                    _activeFilterCount = count;
-                                                  });
-
-                                                  _saveFiltersToPrefs();
-
-                                                  ref
-                                                      .read(
-                                                        bookingFilterControllerProvider
-                                                            .notifier,
-                                                      )
-                                                      .applyCustomFilters(
-                                                        restaurantIds:
-                                                            restaurantIds,
-                                                        managerIds: managerIds,
-                                                        types: types
-                                                            ?.map(
-                                                              (e) => e
-                                                                  .toLowerCase(),
-                                                            )
-                                                            .toList(),
-                                                        statuses: statuses
-                                                            ?.map(
-                                                              (e) => e
-                                                                  .toLowerCase(),
-                                                            )
-                                                            .toList(),
-                                                      );
-                                                },
-                                                onClear: () {
-                                                  setState(() {
-                                                    _selectedRestaurantIds = [];
-                                                    _selectedManagerIds = [];
-                                                    _selectedTypes = [];
-                                                    _selectedStatuses = [];
-                                                    _selectedRange =
-                                                        _defaultRange();
-                                                    _activeFilterCount = 0;
-                                                  });
-
-                                                  _clearSavedFilters();
-
-                                                  ref
-                                                      .read(
-                                                        bookingFilterControllerProvider
-                                                            .notifier,
-                                                      )
-                                                      .resetFilters();
-                                                  ref
-                                                      .read(
-                                                        bookingFilterControllerProvider
-                                                            .notifier,
-                                                      )
-                                                      .filterByDateRange(
-                                                        _selectedRange!,
-                                                      );
-                                                },
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        if (_activeFilterCount > 0)
-                                          Positioned(
-                                            right: 4,
-                                            top: 4,
-                                            child: Container(
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.redAccent,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              constraints: const BoxConstraints(
-                                                minWidth: 20,
-                                                minHeight: 20,
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  '$_activeFilterCount',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(32),
                               ),
-
-                              bookingsAsync.when(
-                                loading: () => const SizedBox(
-                                  height: 300,
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                                error: (e, _) =>
-                                    Center(child: Text('Error: $e')),
-                                data: (bookings) => bookings.isEmpty
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(20),
-                                        child: Center(
-                                          child: Text('No bookings available'),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildStatBox(
+                                          title: 'Open',
+                                          value:
+                                              '${bookingsAsync.value?.where((b) => !b.isClosed).length ?? 0}',
                                         ),
-                                      )
-                                    : Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: _buildStatBox(
+                                          title: 'Closed',
+                                          value:
+                                              '${bookingsAsync.value?.where((b) => b.isClosed).length ?? 0}',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+
+                                      // Calendar button
+                                      _roundedIconButton(
+                                        icon: Icons.calendar_month,
+                                        onTap: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (ctx) =>
+                                                SingleChildScrollView(
+                                                  child: Padding(
+                                                    padding: EdgeInsets.only(
+                                                      bottom: MediaQuery.of(
+                                                        ctx,
+                                                      ).viewInsets.bottom,
+                                                    ),
+                                                    child: _DateRangeModal(
+                                                      initialRange:
+                                                          _selectedRange!,
+                                                      onApply: (range) {
+                                                        setState(
+                                                          () => _selectedRange =
+                                                              range,
+                                                        );
+                                                        _saveFiltersToPrefs();
+                                                        controller
+                                                            .filterByDateRange(
+                                                              range,
+                                                            );
+                                                      },
+                                                    ),
+                                                  ),
+                                                ),
+                                          );
+                                        },
+                                      ),
+
+                                      const SizedBox(width: 8),
+                                      Stack(
                                         children: [
-                                          Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              20,
-                                              0,
-                                              20,
-                                              12,
-                                            ),
-                                            child: Text(
-                                              'Bookings (${bookings.length})',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 16,
+                                          _roundedIconButton(
+                                            icon: Icons.filter_alt_outlined,
+                                            onTap: () {
+                                              showModalBottomSheet(
+                                                context: context,
+                                                isScrollControlled: true,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                builder: (ctx) => _FilterModal(
+                                                  restaurantMap: _restaurantMap,
+                                                  managerMap: _managerMap,
+                                                  initialRestaurants:
+                                                      _selectedRestaurantIds,
+                                                  initialManagers:
+                                                      _selectedManagerIds,
+                                                  initialTypes: _selectedTypes,
+                                                  initialStatuses:
+                                                      _selectedStatuses,
+                                                  onApply: (filters) {
+                                                    final restaurantIds =
+                                                        filters['restaurantIds']
+                                                            as List<String>?;
+                                                    final managerIds =
+                                                        filters['managerIds']
+                                                            as List<String>?;
+                                                    final types =
+                                                        filters['types']
+                                                            as List<String>?;
+                                                    final statuses =
+                                                        filters['statuses']
+                                                            as List<String>?;
+
+                                                    setState(() {
+                                                      _selectedRestaurantIds =
+                                                          restaurantIds ?? [];
+                                                      _selectedManagerIds =
+                                                          managerIds ?? [];
+                                                      _selectedTypes =
+                                                          types ?? [];
+                                                      _selectedStatuses =
+                                                          statuses ?? [];
+
+                                                      int count = 0;
+                                                      if (_selectedRestaurantIds
+                                                          .isNotEmpty)
+                                                        count++;
+                                                      if (_selectedManagerIds
+                                                          .isNotEmpty)
+                                                        count++;
+                                                      if (_selectedTypes
+                                                          .isNotEmpty)
+                                                        count++;
+                                                      if (_selectedStatuses
+                                                          .isNotEmpty)
+                                                        count++;
+                                                      _activeFilterCount =
+                                                          count;
+                                                    });
+
+                                                    _saveFiltersToPrefs();
+
+                                                    ref
+                                                        .read(
+                                                          bookingFilterControllerProvider
+                                                              .notifier,
+                                                        )
+                                                        .applyCustomFilters(
+                                                          restaurantIds:
+                                                              restaurantIds,
+                                                          managerIds:
+                                                              managerIds,
+                                                          types: types
+                                                              ?.map(
+                                                                (e) => e
+                                                                    .toLowerCase(),
+                                                              )
+                                                              .toList(),
+                                                          statuses: statuses
+                                                              ?.map(
+                                                                (e) => e
+                                                                    .toLowerCase(),
+                                                              )
+                                                              .toList(),
+                                                        );
+                                                  },
+                                                  onClear: () {
+                                                    setState(() {
+                                                      _selectedRestaurantIds =
+                                                          [];
+                                                      _selectedManagerIds = [];
+                                                      _selectedTypes = [];
+                                                      _selectedStatuses = [];
+                                                      _selectedRange =
+                                                          _defaultRange();
+                                                      _activeFilterCount = 0;
+                                                    });
+
+                                                    _clearSavedFilters();
+
+                                                    ref
+                                                        .read(
+                                                          bookingFilterControllerProvider
+                                                              .notifier,
+                                                        )
+                                                        .resetFilters();
+                                                    ref
+                                                        .read(
+                                                          bookingFilterControllerProvider
+                                                              .notifier,
+                                                        )
+                                                        .filterByDateRange(
+                                                          _selectedRange!,
+                                                        );
+                                                  },
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          if (_activeFilterCount > 0)
+                                            Positioned(
+                                              right: 4,
+                                              top: 4,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  4,
+                                                ),
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.redAccent,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minWidth: 20,
+                                                      minHeight: 20,
+                                                    ),
+                                                child: Center(
+                                                  child: Text(
+                                                    '$_activeFilterCount',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          ListView.builder(
-                                            shrinkWrap: true,
-                                            physics:
-                                                const NeverScrollableScrollPhysics(),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                            ),
-                                            itemCount: bookings.length,
-                                            itemBuilder: (_, i) =>
-                                                _buildBookingTile(
-                                                  booking: bookings[i],
-                                                ),
-                                          ),
                                         ],
                                       ),
-                              ),
-                              const SizedBox(
-                                height: 50,
-                              ), // To allow pull padding
-                            ],
+                                    ],
+                                  ),
+                                ),
+
+                                bookingsAsync.when(
+                                  loading: () => const SizedBox(
+                                    height: 300,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                                  error: (e, _) =>
+                                      Center(child: Text('Error: $e')),
+                                  data: (bookings) => bookings.isEmpty
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(20),
+                                          child: Center(
+                                            child: Text(
+                                              'No bookings available',
+                                            ),
+                                          ),
+                                        )
+                                      : Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    20,
+                                                    0,
+                                                    20,
+                                                    12,
+                                                  ),
+                                              child: Text(
+                                                'Bookings (${bookings.length})',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ),
+                                            ListView.builder(
+                                              shrinkWrap: true,
+                                              physics:
+                                                  const NeverScrollableScrollPhysics(),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 20,
+                                                  ),
+                                              itemCount: bookings.length,
+                                              itemBuilder: (_, i) =>
+                                                  _buildBookingTile(
+                                                    booking: bookings[i],
+                                                  ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                                const SizedBox(
+                                  height: 50,
+                                ), // To allow pull padding
+                              ],
+                            ),
                           ),
                         ),
                       ),

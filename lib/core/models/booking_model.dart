@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'menu_item_model.dart';
+import 'serving_staff_model.dart';
 
 enum BookingType { dineIn, catering }
 
@@ -18,6 +19,7 @@ class BookingModel {
   final List<MenuItemModel> menuItems;
   final double? ratePerPerson; // Only for catering
   final bool isClosed;
+  final List<ServingStaffModel>? servingStaff;
 
   BookingModel({
     required this.id,
@@ -34,6 +36,7 @@ class BookingModel {
     required this.menuItems,
     this.ratePerPerson,
     this.isClosed = false,
+    this.servingStaff,
   });
 
   BookingModel copyWith({
@@ -51,6 +54,7 @@ class BookingModel {
     List<MenuItemModel>? menuItems,
     double? ratePerPerson,
     bool? isClosed,
+    List<ServingStaffModel>? servingStaff,
   }) {
     return BookingModel(
       id: id ?? this.id,
@@ -67,6 +71,7 @@ class BookingModel {
       menuItems: menuItems ?? this.menuItems,
       ratePerPerson: ratePerPerson ?? this.ratePerPerson,
       isClosed: isClosed ?? this.isClosed,
+      servingStaff: servingStaff ?? this.servingStaff,
     );
   }
 
@@ -88,11 +93,14 @@ class BookingModel {
           .toList(),
       ratePerPerson: map['ratePerPerson']?.toDouble(),
       isClosed: map['isClosed'] ?? false,
+      servingStaff: (map['servingStaff'] as List<dynamic>?)
+          ?.map((e) => ServingStaffModel.fromMap(e))
+          .toList(),
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {
+    final data = {
       'type': type.name,
       'date': Timestamp.fromDate(date),
       'members': members,
@@ -107,5 +115,10 @@ class BookingModel {
       'ratePerPerson': ratePerPerson,
       'isClosed': isClosed,
     };
+
+    if (servingStaff != null) {
+      data['servingStaff'] = servingStaff!.map((e) => e.toMap()).toList();
+    }
+    return data;
   }
 }

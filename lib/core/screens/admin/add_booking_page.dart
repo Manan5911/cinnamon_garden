@@ -1,5 +1,6 @@
 import 'package:booking_management_app/core/models/booking_model.dart';
 import 'package:booking_management_app/core/models/menu_item_model.dart';
+import 'package:booking_management_app/core/models/serving_staff_model.dart';
 import 'package:booking_management_app/core/services/booking_service.dart';
 import 'package:booking_management_app/core/utils/custom_loader.dart';
 import 'package:booking_management_app/core/utils/snackbar_helper.dart';
@@ -38,6 +39,16 @@ class _AddBookingPageState extends State<AddBookingPage> {
 
   List<MenuItemModel> get _menuItems =>
       _isDineIn ? _dineInItems : _cateringItems;
+
+  List<ServingStaffModel> _servingStaff = [];
+
+  void _addServingStaff(ServingStaffModel staff) {
+    setState(() => _servingStaff.add(staff));
+  }
+
+  void _removeServingStaff(int index) {
+    setState(() => _servingStaff.removeAt(index));
+  }
 
   @override
   void initState() {
@@ -78,7 +89,6 @@ class _AddBookingPageState extends State<AddBookingPage> {
             .toList();
       });
     } catch (e) {
-      print("❌ Error fetching dropdowns: $e");
       SnackbarHelper.show(
         context,
         message: 'Error loading data',
@@ -96,6 +106,65 @@ class _AddBookingPageState extends State<AddBookingPage> {
     _ratePerPersonController.dispose();
     _extraDetailsController.dispose();
     super.dispose();
+  }
+
+  void _showAddStaffModal() {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Add Serving Staff',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final phone = phoneController.text.trim();
+
+                  if (name.isNotEmpty && phone.isNotEmpty) {
+                    _addServingStaff(
+                      ServingStaffModel(name: name, phoneNumber: phone),
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('Add'),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickDate() async {
@@ -216,7 +285,7 @@ class _AddBookingPageState extends State<AddBookingPage> {
                             if (_isDineIn)
                               _buildTextField(
                                 _tableNumberController,
-                                "Table Number (optional)",
+                                "Section/Location (optional)",
                               ),
                             _buildTextField(
                               _guideNameController,
@@ -290,10 +359,14 @@ class _AddBookingPageState extends State<AddBookingPage> {
                                   setState(() => _assignedManager = id),
                             ),
                             const SizedBox(height: 20),
-                            _buildAddMenuButton(),
-                            const SizedBox(height: 10),
                             if (_menuItems.isNotEmpty) _buildMenuList(),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 10),
+                            _buildAddMenuButton(),
+                            const SizedBox(height: 12),
+                            if (_servingStaff.isNotEmpty) _buildStaffList(),
+                            const SizedBox(height: 12),
+                            _buildAddStaffButton(),
+                            const SizedBox(height: 20),
                             _buildConfirmButton(),
                           ],
                         ),
@@ -395,6 +468,16 @@ class _AddBookingPageState extends State<AddBookingPage> {
           const SizedBox(height: 6),
           GestureDetector(
             onTap: () {
+              // Check for manager-specific case
+              if (label == "Assigned Manager" && _selectedRestaurant == null) {
+                SnackbarHelper.show(
+                  context,
+                  message: 'Please select a restaurant first',
+                  type: MessageType.warning,
+                );
+                return;
+              }
+
               _showDropdownBottomSheet(
                 label: label,
                 options: options,
@@ -448,6 +531,22 @@ class _AddBookingPageState extends State<AddBookingPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
+        if (options.isEmpty) {
+          return Container(
+            height: 150,
+            padding: const EdgeInsets.all(16),
+            alignment: Alignment.center,
+            child: Text(
+              'No ${label.toLowerCase()}s found',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }
+
         return ListView.separated(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -702,6 +801,188 @@ class _AddBookingPageState extends State<AddBookingPage> {
     );
   }
 
+  void _openServingStaffModal({ServingStaffModel? existingStaff, int? index}) {
+    final nameController = TextEditingController(
+      text: existingStaff?.name ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: existingStaff?.phoneNumber ?? '',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white, // ✅ White background
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Add Serving Staff",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade500),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade500),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.pinkThemed,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    final newStaff = ServingStaffModel(
+                      name: nameController.text.trim(),
+                      phoneNumber: phoneController.text.trim(),
+                    );
+                    setState(() {
+                      if (index != null) {
+                        _servingStaff[index] = newStaff;
+                      } else {
+                        _servingStaff.add(newStaff);
+                      }
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    "Save",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAddStaffButton() {
+    return ElevatedButton.icon(
+      onPressed: _openServingStaffModal,
+      icon: const Icon(Icons.add),
+      label: const Text("Add Serving Staff"),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.pinkThemed,
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildStaffList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Serving Staff:"),
+        const SizedBox(height: 8),
+        ..._servingStaff.map(
+          (staff) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text('${staff.name} (${staff.phoneNumber})')),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        final index = _servingStaff.indexOf(staff);
+                        _openServingStaffModal(
+                          existingStaff: staff,
+                          index: index,
+                        );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _servingStaff.remove(staff));
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.delete,
+                          size: 20,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildConfirmButton() {
     return ElevatedButton(
       onPressed: () async {
@@ -709,6 +990,24 @@ class _AddBookingPageState extends State<AddBookingPage> {
           SnackbarHelper.show(
             context,
             message: 'Please select a booking date.',
+            type: MessageType.warning,
+          );
+          return;
+        }
+
+        if (_guideNameController.text.trim().isEmpty) {
+          SnackbarHelper.show(
+            context,
+            message: 'Please enter guide name',
+            type: MessageType.warning,
+          );
+          return;
+        }
+
+        if (_mobileController.text.trim().isEmpty) {
+          SnackbarHelper.show(
+            context,
+            message: 'Please enter mobile number',
             type: MessageType.warning,
           );
           return;
@@ -741,53 +1040,51 @@ class _AddBookingPageState extends State<AddBookingPage> {
           return;
         }
 
-        if (!_isDineIn) {
-          final rate = double.tryParse(_ratePerPersonController.text.trim());
-          if (rate == null || rate <= 0) {
-            SnackbarHelper.show(
-              context,
-              message: 'Enter valid rate per person.',
-              type: MessageType.warning,
-            );
-            return;
-          }
-        }
-
-        if (_formKey.currentState?.validate() ?? false) {
-          setState(() => _isLoading = true);
-
-          final newBooking = BookingModel(
-            id: '',
-            date: _selectedDate!,
-            type: _isDineIn ? BookingType.dineIn : BookingType.catering,
-            tableNumber: _isDineIn ? _tableNumberController.text.trim() : null,
-            guideName: _guideNameController.text.trim(),
-            guideMobile: _mobileController.text.trim(),
-            extraDetails: _extraDetailsController.text.trim(),
-            companyName: _companyNameController.text.trim(),
-            restaurantId: _selectedRestaurant!,
-            assignedManagerId: _assignedManager!,
-            members: _members.value,
-            ratePerPerson: !_isDineIn
-                ? double.tryParse(_ratePerPersonController.text.trim()) ?? 0.0
-                : null,
-            menuItems: _menuItems,
-            isClosed: false,
+        if (!_isDineIn &&
+            (_ratePerPersonController.text.trim().isEmpty ||
+                double.tryParse(_ratePerPersonController.text.trim()) ==
+                    null)) {
+          SnackbarHelper.show(
+            context,
+            message: 'Enter valid rate per person',
+            type: MessageType.warning,
           );
-
-          final bookingService = BookingService();
-          await bookingService.createBooking(newBooking);
-
-          if (context.mounted) {
-            setState(() => _isLoading = false);
-            SnackbarHelper.show(
-              context,
-              message: 'Booking created successfully!',
-              type: MessageType.success,
-            );
-            Navigator.pop(context, true);
-          }
+          return;
         }
+
+        setState(() => _isLoading = true);
+
+        final newBooking = BookingModel(
+          id: '',
+          date: _selectedDate!,
+          type: _isDineIn ? BookingType.dineIn : BookingType.catering,
+          tableNumber: _isDineIn ? _tableNumberController.text.trim() : null,
+          guideName: _guideNameController.text.trim(),
+          guideMobile: _mobileController.text.trim(),
+          extraDetails: _extraDetailsController.text.trim(),
+          companyName: _companyNameController.text.trim(),
+          restaurantId: _selectedRestaurant!,
+          assignedManagerId: _assignedManager!,
+          members: _members.value,
+          ratePerPerson: !_isDineIn
+              ? double.tryParse(_ratePerPersonController.text.trim()) ?? 0.0
+              : null,
+          menuItems: _menuItems,
+          isClosed: false,
+          servingStaff: _servingStaff,
+        );
+
+        final bookingService = BookingService();
+        await bookingService.createBooking(newBooking);
+
+        if (!mounted) return;
+
+        SnackbarHelper.show(
+          context,
+          message: 'Booking created successfully!',
+          type: MessageType.success,
+        );
+        Navigator.pop(context, true);
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,

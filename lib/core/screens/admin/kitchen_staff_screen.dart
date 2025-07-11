@@ -514,98 +514,107 @@ class _KitchenStaffScreenState extends State<KitchenStaffScreen> {
                         top: Radius.circular(32),
                       ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: _isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _kitchenStaff.isEmpty
-                          ? const Center(child: Text('No kitchen staff found'))
-                          : ListView.separated(
-                              itemCount: _kitchenStaff.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (_, index) {
-                                final staff = _kitchenStaff[index];
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: AppColors.border),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x14000000),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _kitchenStaff.isEmpty
+                        ? const Center(child: Text('No kitchen staff found'))
+                        : RefreshIndicator(
+                            onRefresh: () async {
+                              setState(() => _isLoading = true);
+                              await _loadKitchenStaff();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: ListView.separated(
+                                itemCount: _kitchenStaff.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (_, index) {
+                                  final staff = _kitchenStaff[index];
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: AppColors.border,
                                       ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            staff.email,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                              color: AppColors.text,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Restaurant: ${_restaurantNameById[staff.restaurantId] ?? "-"}',
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                size: 18,
-                                                color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x14000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              staff.email,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                                color: AppColors.text,
                                               ),
-                                              onPressed: () => _showStaffModal(
-                                                existing: staff,
-                                              ),
-                                              tooltip: 'Edit',
                                             ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                                size: 18,
-                                                color: AppColors.primary,
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Restaurant: ${_restaurantNameById[staff.restaurantId] ?? "-"}',
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
                                               ),
-                                              onPressed: () =>
-                                                  _confirmDelete(staff),
-                                              tooltip: 'Delete',
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.edit,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _showStaffModal(
+                                                      existing: staff,
+                                                    ),
+                                                tooltip: 'Edit',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _confirmDelete(staff),
+                                                tooltip: 'Delete',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                    ),
+                          ),
                   ),
                 ),
               ],

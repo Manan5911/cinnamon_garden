@@ -3,7 +3,7 @@ import 'app_colors.dart';
 
 ThemeData appTheme = ThemeData(
   useMaterial3: true,
-  fontFamily: 'Poppins',
+  fontFamily: 'OpenSans',
   scaffoldBackgroundColor: AppColors.background,
   colorScheme: const ColorScheme.light(
     primary: AppColors.primary,

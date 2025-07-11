@@ -127,16 +127,6 @@ class _ViewBookingScreenState extends State<ViewBookingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _sectionHeader("Guide Information"),
-                          const SizedBox(height: 15),
-                          _infoGrid([
-                            _infoTile("Name", widget.booking.guideName),
-                            _infoTile("Mobile", widget.booking.guideMobile),
-                            if (widget.booking.companyName?.isNotEmpty ?? false)
-                              _infoTile("Company", widget.booking.companyName!),
-                          ]),
-                          const SizedBox(height: 15),
-
                           _sectionHeader("Booking Metadata"),
                           const SizedBox(height: 15),
                           _infoGrid([
@@ -154,12 +144,6 @@ class _ViewBookingScreenState extends State<ViewBookingScreen> {
                             if (widget.booking.assignedManagerId?.isNotEmpty ??
                                 false)
                               _infoTile("Manager", widget.managerEmail),
-                            if (widget.booking.type == BookingType.catering &&
-                                widget.booking.ratePerPerson != null)
-                              _infoTile(
-                                "Rate/Person",
-                                "${widget.booking.ratePerPerson!.toStringAsFixed(2)} CHF",
-                              ),
                           ]),
 
                           const SizedBox(height: 15),
@@ -222,151 +206,6 @@ class _ViewBookingScreenState extends State<ViewBookingScreen> {
                               ),
                             );
                           }).toList(),
-
-                          const SizedBox(height: 30),
-                          _actionButton(
-                            context: context,
-                            label: "Edit Booking",
-                            color: widget.booking.isClosed
-                                ? Colors.grey.shade300
-                                : AppColors.primary,
-                            textColor: widget.booking.isClosed
-                                ? Colors.black54
-                                : Colors.white,
-                            onPressed: () async {
-                              if (widget.booking.isClosed) {
-                                SnackbarHelper.show(
-                                  context,
-                                  message: "Booking must be reopened to edit.",
-                                  type: MessageType.warning,
-                                );
-                                return;
-                              }
-
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      EditBookingPage(booking: widget.booking),
-                                ),
-                              );
-
-                              if (result == true) {
-                                Navigator.pop(
-                                  context,
-                                  true,
-                                ); // return to refresh
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          _actionButton(
-                            context: context,
-                            label: widget.booking.isClosed
-                                ? "Reopen Booking"
-                                : "Close Booking",
-                            color: widget.booking.isClosed
-                                ? Colors.orange.shade100
-                                : Colors.lightBlue.shade100,
-                            textColor: Colors.black87,
-                            onPressed: () async {
-                              setState(() => _isLoading = true);
-
-                              final updated = widget.booking.copyWith(
-                                isClosed: !widget.booking.isClosed,
-                              );
-
-                              try {
-                                await BookingService().updateBooking(updated);
-                                SnackbarHelper.show(
-                                  context,
-                                  message:
-                                      'Booking ${updated.isClosed ? "closed" : "reopened"} successfully',
-                                  type: MessageType.success,
-                                );
-                                Navigator.pop(context, true);
-                              } catch (e) {
-                                SnackbarHelper.show(
-                                  context,
-                                  message: 'Failed to update status.',
-                                  type: MessageType.error,
-                                );
-                              } finally {
-                                if (mounted) setState(() => _isLoading = false);
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          _actionButton(
-                            context: context,
-                            label: "Delete Booking",
-                            color: Colors.red.shade400,
-                            textColor: Colors.black,
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text("Confirm Deletion"),
-                                  backgroundColor: Colors.white,
-                                  content: const Text(
-                                    "Are you sure you want to delete this booking?",
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text("Cancel"),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () async {
-                                        Navigator.pop(context); // close dialog
-                                        setState(() => _isLoading = true);
-
-                                        try {
-                                          await BookingService().deleteBooking(
-                                            widget.booking.id,
-                                          );
-                                          SnackbarHelper.show(
-                                            context,
-                                            message: "Booking deleted",
-                                            type: MessageType.success,
-                                          );
-                                          Navigator.pop(
-                                            context,
-                                            true,
-                                          ); // go back
-                                        } catch (e) {
-                                          SnackbarHelper.show(
-                                            context,
-                                            message: "Failed to delete booking",
-                                            type: MessageType.error,
-                                          );
-                                        } finally {
-                                          if (mounted)
-                                            setState(() => _isLoading = false);
-                                        }
-                                      },
-                                      child: const Text("Delete"),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          _actionButton(
-                            context: context,
-                            label: "Generate Bill",
-                            color: AppColors.pinkThemed,
-                            textColor: Colors.black,
-                            onPressed: () {
-                              // TODO: Generate bill
-                            },
-                          ),
-                          const SizedBox(height: 30),
                         ],
                       ),
                     ),

@@ -252,6 +252,19 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     );
   }
 
+  Future<void> _refreshRestaurants() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true); // ✅ Show custom loader
+
+    final data = await _restaurantService.getAllRestaurants();
+    if (!mounted) return;
+
+    setState(() {
+      _restaurants = data;
+      _isLoading = false; // ✅ Hide custom loader
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -299,92 +312,100 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                       child: _isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : _restaurants.isEmpty
-                          ? const Center(child: Text('No restaurants added'))
-                          : ListView.separated(
-                              itemCount: _restaurants.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 12),
-                              itemBuilder: (_, index) {
-                                final r = _restaurants[index];
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: AppColors.border),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x14000000),
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            r.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                              color: AppColors.text,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            r.address,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.edit,
-                                                size: 18,
-                                                color: AppColors.primary,
-                                              ),
-                                              onPressed: () =>
-                                                  _showRestaurantModal(
-                                                    existing: r,
-                                                  ),
-                                              tooltip: 'Edit',
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Material(
-                                            color: Colors.grey.shade200,
-                                            shape: const CircleBorder(),
-                                            child: IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline,
-                                                size: 18,
-                                                color: AppColors.primary,
-                                              ),
-                                              onPressed: () =>
-                                                  _confirmDelete(r),
-                                              tooltip: 'Delete',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
+                          ? const Center(child: Text('No restaurants found'))
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                setState(() => _isLoading = true);
+                                await _loadRestaurants();
                               },
+                              child: ListView.separated(
+                                itemCount: _restaurants.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (_, index) {
+                                  final r = _restaurants[index];
+                                  return Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x14000000),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              r.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                                color: AppColors.text,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              r.address,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          children: [
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.edit,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _showRestaurantModal(
+                                                      existing: r,
+                                                    ),
+                                                tooltip: 'Edit',
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Material(
+                                              color: Colors.grey.shade200,
+                                              shape: const CircleBorder(),
+                                              child: IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  size: 18,
+                                                  color: AppColors.primary,
+                                                ),
+                                                onPressed: () =>
+                                                    _confirmDelete(r),
+                                                tooltip: 'Delete',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ),

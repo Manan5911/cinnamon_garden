@@ -2,6 +2,7 @@
 
 import 'package:booking_management_app/core/screens/admin/admin_dashboard.dart';
 import 'package:booking_management_app/core/screens/common/role_router.dart';
+import 'package:booking_management_app/core/screens/headchef/headchef_dashboard.dart';
 import 'package:booking_management_app/core/screens/kitchen/kitchen_dashboard.dart';
 import 'package:booking_management_app/core/screens/manager/manager_dashboard.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -79,6 +80,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   MaterialPageRoute(
                     builder: (_) =>
                         const KitchenDashboard(showLoginSuccess: true),
+                  ),
+                );
+              } else if (role == 'headchef') {
+                await Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        const HeadChefDashboard(showLoginSuccess: true),
                   ),
                 );
               } else {

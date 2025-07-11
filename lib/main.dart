@@ -1,3 +1,4 @@
+import 'package:booking_management_app/core/screens/headchef/headchef_dashboard.dart';
 import 'package:booking_management_app/core/screens/kitchen/kitchen_dashboard.dart';
 import 'package:booking_management_app/core/screens/manager/manager_dashboard.dart';
 import 'package:booking_management_app/core/utils/constants.dart';
@@ -61,6 +62,9 @@ class MyApp extends StatelessWidget {
       case 'kitchen':
         home = const KitchenDashboard(showLoginSuccess: false);
         break;
+      case 'headchef':
+        home = const HeadChefDashboard(showLoginSuccess: false);
+        break;
       default:
         home = const LoginScreen();
     }
@@ -114,6 +118,8 @@ class RoleBasedRedirector extends StatelessWidget {
             return const ManagerDashboard(showLoginSuccess: false);
           case 'kitchen':
             return const KitchenDashboard(showLoginSuccess: false);
+          case 'headchef':
+            return const HeadChefDashboard(showLoginSuccess: false);
           default:
             return const LoginScreen(); // fallback in case role is invalid
         }
